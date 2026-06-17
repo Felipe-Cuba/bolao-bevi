@@ -1,0 +1,99 @@
+:host {
+  display: block;
+}
+
+/* ── Destaque: próximo/ao vivo + último jogo lado a lado ─────────────────── */
+.spotlight {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.spotlight__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.spotlight__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  margin: 0;
+  color: var(--muted, #9aa4b8);
+}
+
+.dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--live, #ff4d4f);
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Listas roláveis (resultados / próximos) ────────────────────────────── */
+.hl {
+  margin-bottom: 1.75rem;
+}
+
+.hl__title {
+  font-size: 1.05rem;
+  margin: 0 0 0.7rem;
+}
+
+.list {
+  border: 1px solid var(--border, #2a3040);
+  border-radius: 0.9rem;
+  background: var(--surface, #1b1f2a);
+  max-height: 22rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Cabeçalho de fase fixo no topo ao rolar a lista. */
+.phase {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+  background: var(--surface, #1b1f2a);
+  border-bottom: 1px solid var(--border, #2a3040);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted, #9aa4b8);
+}
+
+.empty {
+  color: var(--muted, #9aa4b8);
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .spotlight {
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .hl {
+    margin-bottom: 1.25rem;
+  }
+
+  .hl__title {
+    font-size: 1rem;
+  }
+
+  .list {
+    max-height: 20rem;
+  }
+}

@@ -1,0 +1,37 @@
+<div class="backdrop" (click)="onBackdrop($event)">
+  <div class="dialog bolao" role="dialog" aria-modal="true" aria-label="Exportar palpites">
+    <header class="head">
+      <h2 class="title">
+        <svg lucideDownload class="title__icon" [size]="18"></svg> Exportar palpites
+      </h2>
+      <button class="icon-btn" (click)="close.emit()" aria-label="Fechar">
+        <svg lucideX [size]="18"></svg>
+      </button>
+    </header>
+
+    <label class="all">
+      <input type="checkbox" [checked]="allSelected()" (change)="toggleAll()" />
+      <span>Exportar todos os palpites</span>
+    </label>
+
+    <ul class="list">
+      @for (e of entries(); track e.id) {
+        <li class="item">
+          <label class="item__label">
+            <input type="checkbox" [checked]="isChecked(e.id)" (change)="toggle(e.id)" />
+            <span class="item__name">{{ e.name }}</span>
+            <span class="item__meta">{{ e.palpites.length }} palpites</span>
+          </label>
+        </li>
+      }
+    </ul>
+
+    <footer class="foot">
+      <button class="b-btn" (click)="close.emit()">Cancelar</button>
+      <button class="b-btn b-btn--primary" (click)="doExport()" [disabled]="count() === 0">
+        <svg lucideDownload [size]="16"></svg>
+        Exportar {{ count() }}
+      </button>
+    </footer>
+  </div>
+</div>

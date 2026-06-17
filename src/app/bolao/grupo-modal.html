@@ -1,0 +1,67 @@
+<div class="backdrop" (click)="onBackdrop($event)">
+  <div class="dialog bolao" role="dialog" aria-modal="true" aria-label="Criar grupo">
+    <header class="head">
+      <h2 class="title">
+        <svg lucideUsers class="title__icon" [size]="18"></svg> Criar grupo
+      </h2>
+      <button class="icon-btn" (click)="close.emit()" aria-label="Fechar">
+        <svg lucideX [size]="18"></svg>
+      </button>
+    </header>
+
+    @if (!createdId()) {
+      <!-- Passo 1: nomear e criar -->
+      <div class="body">
+        <p class="hint">
+          Crie um grupo para compartilhar palpites com o pessoal da Bevi. Quem tiver o link
+          poderá ver e editar os palpites do grupo.
+        </p>
+        <input
+          class="input"
+          type="text"
+          placeholder="Nome do grupo (ex.: Bolão da Bevi)"
+          [value]="name()"
+          (input)="name.set($any($event.target).value)"
+          (keyup.enter)="create()"
+        />
+        @if (error(); as e) {
+          <p class="feedback feedback--err">{{ e }}</p>
+        }
+      </div>
+
+      <footer class="foot">
+        <button class="b-btn" (click)="close.emit()">Cancelar</button>
+        <button
+          class="b-btn b-btn--primary"
+          (click)="create()"
+          [disabled]="!name().trim() || creating()"
+        >
+          {{ creating() ? 'Criando…' : 'Criar grupo' }}
+        </button>
+      </footer>
+    } @else {
+      <!-- Passo 2: grupo criado, mostrar link -->
+      <div class="body">
+        <p class="ok">Grupo criado! Compartilhe este link:</p>
+        <div class="linkbox">
+          <span class="linkbox__url">{{ link() }}</span>
+          <button class="linkbox__copy" (click)="copy()" [title]="copied() ? 'Copiado!' : 'Copiar link'">
+            @if (copied()) {
+              <svg lucideCheck [size]="16"></svg>
+            } @else {
+              <svg lucideCopy [size]="16"></svg>
+            }
+          </button>
+        </div>
+        @if (error(); as e) {
+          <p class="feedback feedback--err">{{ e }}</p>
+        }
+      </div>
+
+      <footer class="foot">
+        <button class="b-btn" (click)="close.emit()">Fechar</button>
+        <button class="b-btn b-btn--primary" (click)="enter()">Entrar no grupo</button>
+      </footer>
+    }
+  </div>
+</div>

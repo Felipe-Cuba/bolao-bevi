@@ -1,0 +1,106 @@
+:host {
+  display: block;
+}
+
+.standings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 1.25rem;
+}
+
+.standings__group {
+  background: var(--surface, #1b1f2a);
+  border: 1px solid var(--border, #2a3040);
+  border-radius: 0.9rem;
+  padding: 0.9rem 1rem 1rem;
+}
+
+.standings__title {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.table th {
+  text-align: center;
+  color: var(--muted, #9aa4b8);
+  font-weight: 600;
+  padding: 0.35rem 0.25rem;
+  border-bottom: 1px solid var(--border, #2a3040);
+}
+
+.table td {
+  text-align: center;
+  padding: 0.4rem 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.table__pos {
+  width: 1.5rem;
+  color: var(--muted, #9aa4b8);
+}
+
+.table__team {
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.table__crest {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.table__pts {
+  font-weight: 800;
+}
+
+tr.qualify td {
+  background: color-mix(in srgb, var(--accent, #4f8cff) 14%, transparent);
+}
+
+tr.qualify .table__pos {
+  color: var(--accent, #4f8cff);
+  font-weight: 800;
+}
+
+.empty {
+  color: var(--muted, #9aa4b8);
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .standings {
+    gap: 0.85rem;
+  }
+
+  .standings__group {
+    padding: 0.8rem 0.7rem 0.85rem;
+  }
+
+  .table {
+    font-size: 0.8rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.4rem 0.15rem;
+  }
+
+  /* Nome do time não pode empurrar as colunas numéricas para fora. */
+  .table__team span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

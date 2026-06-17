@@ -1,0 +1,38 @@
+{
+  "name": "bolao-bevi",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "emulator": "firebase emulators:start --only functions,firestore",
+    "start:api": "ng serve --configuration devapi",
+    "deploy": "ng build && firebase deploy --only hosting"
+  },
+  "private": true,
+  "packageManager": "bun@1.3.14",
+  "dependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/compiler": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/fire": "^20.0.1",
+    "@angular/forms": "^22.0.0",
+    "@angular/platform-browser": "^22.0.0",
+    "@angular/router": "^22.0.0",
+    "@lucide/angular": "^1.20.0",
+    "@tanstack/angular-query-experimental": "^5.101.0",
+    "firebase": "^12.15.0",
+    "ngx-oneforall": "^1.5.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.0.1",
+    "@angular/cli": "^22.0.1",
+    "@angular/compiler-cli": "^22.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2"
+  }
+}

@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cache público das partidas da Copa: leitura liberada para o app;
+    // escrita NEGADA ao cliente — só a Cloud Function (Admin SDK) grava.
+    match /wcMatches/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Grupos de palpites: o id do grupo é o código de acesso (longo, aleatório).
+    // - get liberado (quem tem o código/link lê), mas list NEGADO (não dá pra enumerar grupos);
+    // - escrita NEGADA ao cliente — só a Cloud Function (Admin SDK) grava, validando o código.
+    match /grupos/{groupId} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if false;
+
+      match /entries/{entryId} {
+        allow read: if true;   // membros veem os palpites uns dos outros
+        allow write: if false; // só a Function grava
+      }
+    }
+
+    // Demais coleções: bloqueadas por padrão.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
