@@ -1,18 +1,23 @@
-// Environment para testar LOCALMENTE com a API real via emulador da Cloud Function.
+// Environment para rodar LOCALMENTE com a API via emulador de Functions.
 // Usado pela configuração "devapi" do Angular (ng serve --configuration devapi).
 //
-// O app chama /api/wc, que o proxy.conf.json encaminha para o emulador de Functions,
-// que por sua vez chama a API football-data.org server-side (token em functions/.env.bolao-bevi).
-// useEmulators liga o connect ao Firestore emulado (porta 8080).
+// - API (/api/**): o proxy.conf.json encaminha para o emulador da function `api`.
+//   A function emulada chama a API football-data.org server-side e escreve no
+//   Firestore REAL (o emulador de Firestore NÃO sobe — ver firebase.json).
+// - Firestore (leitura no front): @angular/fire lê o banco de PRODUÇÃO direto, sem
+//   conectar a emulador (useEmulators ausente). Assim os grupos reais aparecem.
+//
+// Resultado: leitura E escrita batem no banco REAL. Suba o emulador de Functions
+// (`bun --cwd functions run serve` ou `bun run emulator`) e rode `bun run start:api`.
+// ATENÇÃO: criar/salvar/remover palpite afeta os dados de PRODUÇÃO.
 
 import { firebaseConfig } from './firebase.config';
 
 export const environment = {
   production: false,
-  apiUrl: '/api/wc',
+  apiUrl: '/api/matches',
   gruposApiUrl: '/api/grupos',
   localSeedUrl: 'wc-response-complete.json',
   useLocalData: false,
   firebaseConfig,
-  useEmulators: true,
 };

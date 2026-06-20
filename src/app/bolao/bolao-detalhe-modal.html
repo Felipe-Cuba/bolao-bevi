@@ -1,0 +1,41 @@
+<div class="backdrop" (click)="onBackdrop($event)">
+  <div class="dialog bolao" role="dialog" aria-modal="true" [attr.aria-label]="title()">
+    <header class="head">
+      <h2 class="title">
+        <svg lucideTrophy class="title__icon" [size]="18"></svg> {{ title() }}
+        <span class="title__count">{{ rows().length }}</span>
+      </h2>
+      <button class="icon-btn" (click)="close.emit()" aria-label="Fechar">
+        <svg lucideX [size]="18"></svg>
+      </button>
+    </header>
+
+    @if (rows().length) {
+    <ul class="list">
+      @for (r of rows(); track r.id) {
+      <li class="drow">
+        <span class="drow__team">
+          <img class="drow__crest" [src]="r.homeCrest" [alt]="r.homeTla" loading="lazy" />
+          {{ r.homeTla }}
+        </span>
+        <span class="drow__score">{{ r.realHome }}<span class="drow__x">×</span>{{ r.realAway }}</span>
+        <span class="drow__team drow__team--away">
+          {{ r.awayTla }}
+          <img class="drow__crest" [src]="r.awayCrest" [alt]="r.awayTla" loading="lazy" />
+        </span>
+        <span class="drow__guess">
+          palpite {{ r.guessHome }}×{{ r.guessAway }}
+        </span>
+        <span class="drow__pts" [attr.data-pts]="r.pts">{{ ptsLabel(r.pts) }}</span>
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="empty">Nenhum palpite nesta categoria.</p>
+    }
+
+    <footer class="foot">
+      <button class="b-btn b-btn--primary" (click)="close.emit()">Fechar</button>
+    </footer>
+  </div>
+</div>

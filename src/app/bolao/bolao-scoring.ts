@@ -7,6 +7,7 @@
 // Só pontua jogos com resultado real disponível: FINISHED ou IN_PLAY (placar definido).
 
 import { Match, MatchStatus, isLive } from '../wc/wc.types';
+import { STAGE_ORDER, stageLabel } from '../wc/wc-derivations';
 import { BolaoEntry, Palpite } from './bolao.types';
 
 export type Outcome = 'HOME' | 'AWAY' | 'DRAW';
@@ -43,6 +44,16 @@ export interface DayTally {
   jogos: number; // quantos jogos pontuados nesse dia
 }
 
+/** Pontuação por rodada de grupos (matchday) ou fase de mata-mata (stage). */
+export interface PhaseTally {
+  /** Chave estável: 'GROUP_1'..'GROUP_3' (rodadas) ou o stage do mata-mata. */
+  key: string;
+  label: string; // 'Rodada 1' / 'Oitavas de final' / ...
+  order: number; // ordem cronológica oficial (p/ ordenar)
+  points: number;
+  jogos: number; // jogos pontuados nessa fase/rodada
+}
+
 export interface EntryTally {
   total: number;
   cravou: number; // palpites de +3 (placar exato)
@@ -51,6 +62,35 @@ export interface EntryTally {
   jogosPontuados: number; // quantos jogos com palpite já tinham resultado
   porGrupo: Record<string, number>; // pontos somados por grupo (GROUP_x ou "KO" p/ mata-mata)
   porDia: DayTally[]; // pontos por dia (ordem cronológica), só dias com jogos pontuados
+  porFase: PhaseTally[]; // pontos por rodada/fase, progressivo (só fases com jogo na agenda)
+  potencialRestante: number; // máximo ainda obtível na FASE ATIVA (+3 por palpite pendente)
+  melhorDia: DayTally | null; // dia de maior pontuação (entre os pontuados)
+  piorDia: DayTally | null; // dia de menor pontuação (entre os pontuados)
+}
+
+/** Chave de fase/rodada de um jogo: rodada (matchday) nos grupos, stage no mata-mata. */
+function phaseKey(match: Match): string {
+  if (String(match.stage) === 'GROUP_STAGE' && match.matchday != null) {
+    return `GROUP_${match.matchday}`;
+  }
+  return String(match.stage);
+}
+
+/** Rótulo legível de uma chave de fase. */
+function phaseLabel(key: string): string {
+  if (key.startsWith('GROUP_')) return `Rodada ${key.slice(6)}`;
+  return stageLabel(key);
+}
+
+/** Ordem cronológica oficial de uma chave de fase (rodadas de grupo antes do mata-mata). */
+function phaseOrder(key: string): number {
+  if (key.startsWith('GROUP_')) {
+    // Rodadas 1..3 ficam ANTES de qualquer fase de mata-mata.
+    return Number(key.slice(6)); // 1, 2, 3
+  }
+  const i = STAGE_ORDER.indexOf(key);
+  // +10 garante que todo mata-mata venha depois das rodadas de grupo.
+  return i === -1 ? STAGE_ORDER.length + 10 : i + 10;
 }
 
 const KO_KEY = 'KO'; // chave para palpites de jogos sem grupo (mata-mata)
@@ -77,6 +117,21 @@ function dayKey(utcDate: string): string {
 export function tallyEntry(entry: BolaoEntry, matches: Match[]): EntryTally {
   const byId = new Map<number, Match>(matches.map((m) => [m.id, m]));
   const dias = new Map<string, DayTally>();
+
+  // Buckets de fase/rodada criados a partir do CALENDÁRIO, para uma fase/rodada aparecer
+  // assim que tiver jogo "montado" (mesmo com 0 pts) — comportamento progressivo.
+  // No mata-mata, os confrontos vêm com times nulos ("A definir") até serem definidos;
+  // por isso só criamos o bucket quando há jogo com ambos os times definidos. Rodadas de
+  // grupo sempre têm times, então 1/2/3 aparecem desde o início.
+  const fases = new Map<string, PhaseTally>();
+  for (const m of matches) {
+    if (m.homeTeam.id == null || m.awayTeam.id == null) continue;
+    const key = phaseKey(m);
+    if (!fases.has(key)) {
+      fases.set(key, { key, label: phaseLabel(key), order: phaseOrder(key), points: 0, jogos: 0 });
+    }
+  }
+
   const tally: EntryTally = {
     total: 0,
     cravou: 0,
@@ -85,11 +140,26 @@ export function tallyEntry(entry: BolaoEntry, matches: Match[]): EntryTally {
     jogosPontuados: 0,
     porGrupo: {},
     porDia: [],
+    porFase: [],
+    potencialRestante: 0,
+    melhorDia: null,
+    piorDia: null,
   };
+
+  // Potencial (+3 por jogo com palpite ainda não pontuável) acumulado por fase, para
+  // depois ficar só com o da fase ATIVA (a fase mais antiga ainda com jogos pendentes).
+  const potencialPorFase = new Map<string, number>();
 
   for (const p of entry.palpites) {
     const match = byId.get(p.matchId);
-    if (!match || !isScorable(match)) continue;
+    if (!match) continue;
+
+    // Jogo ainda não pontuável, mas com palpite → +3 potencial na fase do jogo.
+    if (!isScorable(match)) {
+      const fk = phaseKey(match);
+      potencialPorFase.set(fk, (potencialPorFase.get(fk) ?? 0) + 3);
+      continue;
+    }
 
     tally.jogosPontuados++;
     const pts = scoreGuess(p, match);
@@ -100,6 +170,12 @@ export function tallyEntry(entry: BolaoEntry, matches: Match[]): EntryTally {
 
     const key = match.group ?? KO_KEY;
     tally.porGrupo[key] = (tally.porGrupo[key] ?? 0) + pts;
+
+    const fase = fases.get(phaseKey(match));
+    if (fase) {
+      fase.points += pts;
+      fase.jogos++;
+    }
 
     const dk = dayKey(match.utcDate);
     const day = dias.get(dk);
@@ -112,7 +188,64 @@ export function tallyEntry(entry: BolaoEntry, matches: Match[]): EntryTally {
   }
 
   tally.porDia = [...dias.values()].sort((a, b) => a.date.localeCompare(b.date));
+  tally.porFase = [...fases.values()].sort((a, b) => a.order - b.order);
+
+  // Potencial restante = só o da FASE ATIVA: a fase mais antiga (menor order) que ainda
+  // tem jogos pendentes com palpite. Fases futuras só contam quando viram a ativa.
+  let faseAtivaOrder = Infinity;
+  for (const fk of potencialPorFase.keys()) {
+    const ord = phaseOrder(fk);
+    if (ord < faseAtivaOrder) faseAtivaOrder = ord;
+  }
+  if (faseAtivaOrder !== Infinity) {
+    for (const [fk, pts] of potencialPorFase) {
+      if (phaseOrder(fk) === faseAtivaOrder) {
+        tally.potencialRestante = pts;
+        break;
+      }
+    }
+  }
+
+  // Melhor/pior dia entre os dias com jogos pontuados.
+  for (const d of tally.porDia) {
+    if (!tally.melhorDia || d.points > tally.melhorDia.points) tally.melhorDia = d;
+    if (!tally.piorDia || d.points < tally.piorDia.points) tally.piorDia = d;
+  }
+
   return tally;
+}
+
+const KO_KEY_GROUP = 'KO'; // grupo dos jogos sem fase de grupos (mata-mata)
+
+/** Palpite resolvido contra o jogo real (para listagens detalhadas). */
+export interface ScoredGuess {
+  match: Match;
+  palpite: Palpite;
+  pts: 0 | 1 | 3;
+  /** Grupo do jogo (GROUP_x) ou "KO" no mata-mata. */
+  group: string;
+}
+
+/**
+ * Lista detalhada dos palpites sobre jogos já pontuáveis (ordenada por data).
+ * Base para as modais que mostram "quais palpites geraram estes pontos".
+ */
+export function entryBreakdown(entry: BolaoEntry, matches: Match[]): ScoredGuess[] {
+  const byId = new Map<number, Match>(matches.map((m) => [m.id, m]));
+  const out: ScoredGuess[] = [];
+
+  for (const palpite of entry.palpites) {
+    const match = byId.get(palpite.matchId);
+    if (!match || !isScorable(match)) continue;
+    out.push({
+      match,
+      palpite,
+      pts: scoreGuess(palpite, match),
+      group: match.group ?? KO_KEY_GROUP,
+    });
+  }
+
+  return out.sort((a, b) => a.match.utcDate.localeCompare(b.match.utcDate));
 }
 
 export interface RankedEntry {

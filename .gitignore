@@ -17,6 +17,7 @@ yarn-error.log
 /functions/node_modules
 /functions/npm-debug.log
 /functions/firebase-debug.log
+/functions/firestore-debug.log
 /functions/yarn-error.log
 /functions/.env.bolao-bevi
 /functions/.env.local

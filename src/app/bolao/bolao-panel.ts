@@ -14,6 +14,7 @@ import {
   LucideCrosshair,
   LucideDownload,
   LucideGrid3x3,
+  LucideLayers,
   LucideMedal,
   LucidePencil,
   LucideThumbsUp,
@@ -22,9 +23,17 @@ import {
   LucideX,
 } from '@lucide/angular';
 
-import { Match } from '../wc/wc.types';
+import { Match, MatchStatus, isLive } from '../wc/wc.types';
+import { teamCrest } from '../wc/teams';
 import { BolaoStore } from './bolao-store';
-import { rankEntries, tallyEntry } from './bolao-scoring';
+import {
+  ScoredGuess,
+  entryBreakdown,
+  isScorable,
+  rankEntries,
+  scoreGuess,
+  tallyEntry,
+} from './bolao-scoring';
 import {
   downloadJson,
   exportEntries,
@@ -32,8 +41,21 @@ import {
   parseEntries,
   slugify,
 } from './bolao-io';
-import { BolaoEntry } from './bolao.types';
+import { BolaoEntry, Palpite } from './bolao.types';
 import { BolaoExportModal } from './bolao-export-modal';
+import { BolaoDetalheModal } from './bolao-detalhe-modal';
+
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+function isLiveOrStarted(match: Match): boolean {
+  if (isLive(match)) return true;
+  if (match.status === MatchStatus.TIMED || match.status === MatchStatus.SCHEDULED) {
+    const startMs = Date.parse(match.utcDate);
+    const now = Date.now();
+    return startMs <= now && now < startMs + TWO_HOURS_MS;
+  }
+  return false;
+}
 
 /** Célula do heatmap de pontos por grupo. */
 interface GroupCell {
@@ -51,6 +73,34 @@ interface DayColumn {
   jogos: number;
   /** Altura 0–1 relativa ao melhor dia. */
   height: number;
+  /** Dia de maior/menor pontuação (para realce). */
+  isBest: boolean;
+  isWorst: boolean;
+}
+
+/** Célula de pontos por fase/rodada. */
+interface PhaseCell {
+  label: string;
+  value: number;
+  jogos: number;
+  /** Intensidade 0–1 relativa à melhor fase (para a cor). */
+  heat: number;
+}
+
+/** Linha compacta de um jogo ao vivo no painel do bolão. */
+interface LiveRow {
+  id: number;
+  homeTla: string;
+  awayTla: string;
+  homeCrest: string;
+  awayCrest: string;
+  /** Placar real (null enquanto o jogo não tem placar definido). */
+  realHome: number | null;
+  realAway: number | null;
+  palpite: Palpite | null;
+  /** Pontos do palpite (0/1/3) ou null se ainda não pontuável. */
+  pts: 0 | 1 | 3 | null;
+  ptsLabel: string;
 }
 
 @Component({
@@ -68,6 +118,8 @@ interface DayColumn {
     LucideChevronDown,
     LucideGrid3x3,
     LucideCalendarDays,
+    LucideLayers,
+    BolaoDetalheModal,
   ],
   templateUrl: './bolao-panel.html',
   styleUrl: './bolao-panel.css',
@@ -127,19 +179,110 @@ export class BolaoPanel {
     return cells;
   });
 
-  /** Colunas do mini-gráfico de pontos por dia (cronológico). */
+  /** Colunas do mini-gráfico de pontos por dia (cronológico), com realce best/worst. */
   readonly dayColumns = computed<DayColumn[]>(() => {
-    const dias = this.tally()?.porDia ?? [];
+    const t = this.tally();
+    const dias = t?.porDia ?? [];
     const max = Math.max(0, ...dias.map((d) => d.points));
+    // Só realça quando há variação real entre os dias (mais de um dia pontuado).
+    const distinguish = dias.length > 1 && t?.melhorDia?.points !== t?.piorDia?.points;
     return dias.map((d) => ({
       label: this.shortDay(d.date),
       points: d.points,
       jogos: d.jogos,
       height: max > 0 ? d.points / max : 0,
+      isBest: distinguish && d.date === t?.melhorDia?.date,
+      isWorst: distinguish && d.date === t?.piorDia?.date,
     }));
   });
 
+  /** Células do card "pontos por fase" (rodadas de grupo + fases de mata-mata). */
+  readonly phaseCells = computed<PhaseCell[]>(() => {
+    const fases = this.tally()?.porFase ?? [];
+    const max = Math.max(0, ...fases.map((f) => f.points));
+    return fases.map((f) => ({
+      label: f.label,
+      value: f.points,
+      jogos: f.jogos,
+      heat: max > 0 ? f.points / max : 0,
+    }));
+  });
+
+  /** Potencial ainda obtível (+3 por palpite em jogo não pontuável). */
+  readonly potencial = computed(() => this.tally()?.potencialRestante ?? 0);
+
+  /** Resumo "dd/mm · N pts" do melhor e do pior dia (null quando não há). */
+  readonly bestDayLabel = computed(() => this.dayResumo(this.tally()?.melhorDia ?? null));
+  readonly worstDayLabel = computed(() => this.dayResumo(this.tally()?.piorDia ?? null));
+
+  private dayResumo(d: { date: string; points: number } | null): string | null {
+    return d ? `${this.shortDay(d.date)} · ${d.points} pts` : null;
+  }
+
   readonly ranking = computed(() => rankEntries(this.entries(), this.matches()));
+
+  /** Palpites do entry selecionado já resolvidos (placar real × pts), para as modais. */
+  readonly breakdown = computed<ScoredGuess[]>(() => {
+    const entry = this.selected();
+    return entry ? entryBreakdown(entry, this.matches()) : [];
+  });
+
+  /** Modal de detalhe aberta (título + itens filtrados), ou null. */
+  readonly detalhe = signal<{ title: string; items: ScoredGuess[] } | null>(null);
+
+  /** Abre a modal de uma categoria (Cravou/Acertou/Errou). Não abre se vazia. */
+  openCategoria(kind: 'cravou' | 'acertou' | 'errou'): void {
+    const wanted = kind === 'cravou' ? 3 : kind === 'acertou' ? 1 : 0;
+    const items = this.breakdown().filter((g) => g.pts === wanted);
+    if (!items.length) return;
+    const title = kind === 'cravou' ? 'Cravou' : kind === 'acertou' ? 'Acertou' : 'Errou';
+    this.detalhe.set({ title, items });
+  }
+
+  /** Abre a modal de um grupo (só palpites que pontuaram). Não abre se vazia. */
+  openGrupo(label: string): void {
+    const key = label === 'KO' ? 'KO' : `GROUP_${label}`;
+    const items = this.breakdown().filter((g) => g.group === key && g.pts > 0);
+    if (!items.length) return;
+    const title = label === 'KO' ? 'Mata-mata' : `Grupo ${label}`;
+    this.detalhe.set({ title, items });
+  }
+
+  closeDetalhe(): void {
+    this.detalhe.set(null);
+  }
+
+  /** Linhas compactas dos jogos ao vivo, já com placar real e palpite resolvidos. */
+  readonly liveRows = computed<LiveRow[]>(() => {
+    const entry = this.selected();
+    const byMatch = new Map<number, Palpite>(
+      entry ? entry.palpites.map((p) => [p.matchId, p]) : [],
+    );
+
+    return this.matches()
+      .filter(isLiveOrStarted)
+      .map((m) => {
+        const palpite = byMatch.get(m.id) ?? null;
+        const hasReal = m.score.fullTime.home != null && m.score.fullTime.away != null;
+        const pts = palpite && isScorable(m) ? scoreGuess(palpite, m) : null;
+        return {
+          id: m.id,
+          homeTla: this.teamTla(m.homeTeam),
+          awayTla: this.teamTla(m.awayTeam),
+          homeCrest: teamCrest(m.homeTeam),
+          awayCrest: teamCrest(m.awayTeam),
+          realHome: hasReal ? (m.score.fullTime.home as number) : null,
+          realAway: hasReal ? (m.score.fullTime.away as number) : null,
+          palpite,
+          pts,
+          ptsLabel: pts === 3 ? 'Cravou' : pts === 1 ? 'Acertou' : pts === 0 ? 'Errou' : '',
+        };
+      });
+  });
+
+  private teamTla(team: Match['homeTeam']): string {
+    return team.tla || team.shortName || '—';
+  }
 
   /** "AAAA-MM-DD" → "dd/mm". */
   private shortDay(date: string): string {

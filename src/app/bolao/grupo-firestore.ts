@@ -83,14 +83,21 @@ export function groupEntries$(
   });
 }
 
-/** Resposta padrão de erro da Function. */
-async function postGrupos<T>(payload: Record<string, unknown>): Promise<T> {
-  const url = gruposApiUrl();
-  if (!url) throw new Error('Modo grupo indisponível neste ambiente.');
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+/**
+ * Chamada genérica à API REST de grupos. Monta a URL a partir da base (gruposApiUrl)
+ * + path, com o tratamento de erro padrão (mensagem do corpo ou status).
+ */
+async function requestGrupos<T>(
+  method: 'POST' | 'PUT' | 'DELETE',
+  path = '',
+  body?: Record<string, unknown>,
+): Promise<T> {
+  const base = gruposApiUrl();
+  if (!base) throw new Error('Modo grupo indisponível neste ambiente.');
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -101,20 +108,27 @@ async function postGrupos<T>(payload: Record<string, unknown>): Promise<T> {
 
 /** Cria um grupo no servidor e devolve seu id (= código de acesso). */
 export function createGroupApi(name: string): Promise<{ groupId: string; name: string }> {
-  return postGrupos({ action: 'createGroup', name });
+  return requestGrupos('POST', '', { name });
 }
 
-/** Cria/atualiza um palpite no grupo (entryId ausente = novo). */
+/** Cria (entryId ausente = POST) ou atualiza (entryId = PUT) um palpite no grupo. */
 export function saveEntryApi(
   groupId: string,
   name: string,
   palpites: Palpite[],
   entryId?: string,
 ): Promise<{ entry: BolaoEntry }> {
-  return postGrupos({ action: 'saveEntry', groupId, entryId, name, palpites });
+  const enc = encodeURIComponent(groupId);
+  if (entryId) {
+    return requestGrupos('PUT', `/${enc}/entries/${encodeURIComponent(entryId)}`, { name, palpites });
+  }
+  return requestGrupos('POST', `/${enc}/entries`, { name, palpites });
 }
 
 /** Remove um palpite do grupo. */
 export function removeEntryApi(groupId: string, entryId: string): Promise<{ ok: true }> {
-  return postGrupos({ action: 'removeEntry', groupId, entryId });
+  return requestGrupos(
+    'DELETE',
+    `/${encodeURIComponent(groupId)}/entries/${encodeURIComponent(entryId)}`,
+  );
 }

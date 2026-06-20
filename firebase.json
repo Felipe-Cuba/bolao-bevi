@@ -11,9 +11,6 @@
     "functions": {
       "port": 5001
     },
-    "firestore": {
-      "port": 8080
-    },
     "ui": {
       "enabled": true
     },
@@ -24,16 +21,9 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
-        "source": "/api/wc",
+        "source": "/api/**",
         "function": {
-          "functionId": "wcMatches",
-          "region": "southamerica-east1"
-        }
-      },
-      {
-        "source": "/api/grupos",
-        "function": {
-          "functionId": "grupos",
+          "functionId": "api",
           "region": "southamerica-east1"
         }
       },

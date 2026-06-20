@@ -39,6 +39,33 @@
     <p class="feedback" [class.feedback--err]="fb.kind === 'err'">{{ fb.text }}</p>
     }
 
+    @if (liveRows().length) {
+    <section class="live">
+      <h3 class="live__title"><span class="dot"></span> Ao vivo</h3>
+      @for (r of liveRows(); track r.id) {
+      <div class="lrow">
+        <span class="lrow__team">
+          <img class="lrow__crest" [src]="r.homeCrest" [alt]="r.homeTla" loading="lazy" />
+          {{ r.homeTla }}
+        </span>
+        <span class="lrow__score">
+          {{ r.realHome ?? '-' }}<span class="lrow__x">×</span>{{ r.realAway ?? '-' }}
+        </span>
+        <span class="lrow__team lrow__team--away">
+          {{ r.awayTla }}
+          <img class="lrow__crest" [src]="r.awayCrest" [alt]="r.awayTla" loading="lazy" />
+        </span>
+        @if (r.palpite; as p) {
+        <span class="lrow__guess" [attr.data-pts]="r.pts">
+          palpite {{ p.home }}×{{ p.away }}
+          @if (r.ptsLabel) { · {{ r.ptsLabel }} }
+        </span>
+        }
+      </div>
+      }
+    </section>
+    }
+
     @if (tally(); as t) {
     <!-- Hero: total + aproveitamento -->
     <section class="hero">
@@ -46,6 +73,11 @@
         <svg lucideTrophy class="hero__icon" [size]="26"></svg>
         <div class="hero__num">{{ t.total }}</div>
         <div class="hero__cap">pontos</div>
+        @if (potencial() > 0) {
+        <span class="hero__potencial" title="Máximo ainda obtível na fase em andamento">
+          +{{ potencial() }} em jogo
+        </span>
+        }
       </div>
       <div class="hero__side">
         <div class="gauge" [style.--p.%]="hitRate()">
@@ -56,45 +88,68 @@
       </div>
     </section>
 
-    <!-- Faixas de acerto: Cravou / Acertou / Errou -->
+    <!-- Faixas de acerto: Cravou / Acertou / Errou (clicáveis → modal de detalhe) -->
     <section class="tiers">
-      <div class="tier tier--cravou">
+      <button type="button" class="tier tier--cravou" [disabled]="t.cravou === 0"
+        (click)="openCategoria('cravou')" title="Ver palpites cravados">
         <svg lucideCrosshair [size]="20"></svg>
         <span class="tier__val">{{ t.cravou }}</span>
         <span class="tier__lab">Cravou</span>
         <span class="tier__hint">+3 · placar exato</span>
-      </div>
-      <div class="tier tier--acertou">
+      </button>
+      <button type="button" class="tier tier--acertou" [disabled]="t.acertou === 0"
+        (click)="openCategoria('acertou')" title="Ver palpites certos">
         <svg lucideThumbsUp [size]="20"></svg>
         <span class="tier__val">{{ t.acertou }}</span>
         <span class="tier__lab">Acertou</span>
         <span class="tier__hint">+1 · resultado</span>
-      </div>
-      <div class="tier tier--errou">
+      </button>
+      <button type="button" class="tier tier--errou" [disabled]="t.errou === 0"
+        (click)="openCategoria('errou')" title="Ver palpites errados">
         <svg lucideX [size]="20"></svg>
         <span class="tier__val">{{ t.errou }}</span>
         <span class="tier__lab">Errou</span>
         <span class="tier__hint">0 · fora</span>
-      </div>
+      </button>
     </section>
 
-    <!-- Heatmap: pontos por grupo -->
+    <!-- Heatmap: pontos por grupo (células com pontos abrem a modal do grupo) -->
     <section class="card">
       <h3 class="card__title">
         <svg lucideGrid3x3 [size]="15"></svg> Pontos por grupo
       </h3>
       <div class="heat">
         @for (c of groupCells(); track c.label) {
-        <div class="heat__cell" [class.heat__cell--empty]="c.value === 0" [style.--h]="c.heat"
+        <button type="button" class="heat__cell" [class.heat__cell--empty]="c.value === 0"
+          [class.heat__cell--clickable]="c.value > 0" [disabled]="c.value === 0" [style.--h]="c.heat"
+          (click)="openGrupo(c.label)"
           [title]="'Grupo ' + c.label + ': ' + c.value + ' pts'">
           <span class="heat__group">{{ c.label }}</span>
           <span class="heat__val">{{ c.value }}</span>
-        </div>
+        </button>
         }
       </div>
     </section>
 
-    <!-- Mini-gráfico de colunas: pontos por dia -->
+    <!-- Pontos por fase/rodada (progressivo: só fases com jogo montado) -->
+    @if (phaseCells().length) {
+    <section class="card">
+      <h3 class="card__title">
+        <svg lucideLayers [size]="15"></svg> Pontos por fase
+      </h3>
+      <div class="phases">
+        @for (f of phaseCells(); track f.label) {
+        <div class="phase-cell" [class.phase-cell--empty]="f.value === 0" [style.--h]="f.heat"
+          [title]="f.label + ': ' + f.value + ' pts · ' + f.jogos + ' jogo(s)'">
+          <span class="phase-cell__lab">{{ f.label }}</span>
+          <span class="phase-cell__val">{{ f.value }}</span>
+        </div>
+        }
+      </div>
+    </section>
+    }
+
+    <!-- Mini-gráfico de colunas: pontos por dia (melhor/pior em destaque) -->
     <section class="card">
       <h3 class="card__title">
         <svg lucideCalendarDays [size]="15"></svg> Pontos por dia
@@ -102,7 +157,8 @@
       @if (dayColumns().length) {
       <div class="days">
         @for (d of dayColumns(); track d.label) {
-        <div class="day" [title]="d.points + ' pts · ' + d.jogos + ' jogo(s)'">
+        <div class="day" [class.day--best]="d.isBest" [class.day--worst]="d.isWorst"
+          [title]="d.points + ' pts · ' + d.jogos + ' jogo(s)'">
           <span class="day__pts">{{ d.points }}</span>
           <div class="day__track">
             <div class="day__bar" [style.height.%]="d.height * 100"></div>
@@ -111,6 +167,14 @@
         </div>
         }
       </div>
+      @if (bestDayLabel(); as best) {
+      <p class="day-resumo">
+        <span class="day-resumo__best">Melhor: {{ best }}</span>
+        @if (worstDayLabel(); as worst) {
+        <span class="day-resumo__worst">Pior: {{ worst }}</span>
+        }
+      </p>
+      }
       } @else {
       <p class="card__empty">Nenhum dia com jogos pontuados ainda.</p>
       }
@@ -144,3 +208,7 @@
   </div>
   }
 </div>
+
+@if (detalhe(); as d) {
+  <app-bolao-detalhe-modal [title]="d.title" [items]="d.items" (close)="closeDetalhe()" />
+}

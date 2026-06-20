@@ -7,9 +7,9 @@ import { firebaseConfig } from './firebase.config';
 
 export const environment = {
   production: true,
-  // Rota relativa servida pelo Hosting → Cloud Function wcMatches (proxy da API).
-  apiUrl: '/api/wc',
-  // Rota relativa → Cloud Function `grupos` (criar/salvar/remover palpites do grupo).
+  // Rota relativa servida pelo Hosting → function `api` (Express), endpoint de partidas.
+  apiUrl: '/api/matches',
+  // Rota base → function `api`, recurso de grupos (criar/salvar/remover palpites).
   gruposApiUrl: '/api/grupos',
   localSeedUrl: 'wc-response-complete.json',
   // Usa a API real (via proxy). Em qualquer falha, cai no seed local automaticamente.
