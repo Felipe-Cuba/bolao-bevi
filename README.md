@@ -1,59 +1,85 @@
-# BolaoBevi
+# Bolão Bevi 🏆⚽
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.1.
+Aplicação web de **entretenimento** para acompanhar a Copa do Mundo 2026 e brincar de
+bolão entre amigos — palpitar placares, somar pontos e comparar resultados. Não tem
+qualquer fim comercial nem vínculo oficial com a FIFA ou com a competição; é um projeto
+pessoal, só pela diversão.
 
-## Development server
+## ✨ O que faz
 
-To start a local development server, run:
+- **Destaques** — jogo ao vivo, próximo e último, com listas de resultados e próximos
+  jogos por fase, e um ranking de artilheiros.
+- **Jogos** — todas as partidas, filtráveis por status e grupo.
+- **Classificação** — tabela da fase de grupos, calculada a partir dos jogos encerrados.
+- **Artilheiros** — pódio do top 3 e ranking completo de goleadores.
+- **Bolão** — palpites de placar com pontuação (placar exato, resultado certo, erro),
+  modo individual (localStorage) ou em grupo compartilhado.
 
-```bash
-ng serve
-```
+## 🛠️ Tecnologias
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+**Frontend**
+- [Angular 22](https://angular.dev/) (standalone components, zoneless, signals)
+- [TanStack Query (Angular)](https://tanstack.com/query) — cache e estado das requisições
+- [@angular/fire](https://github.com/angular/angularfire) + Cloud Firestore
+- [Lucide](https://lucide.dev/) — ícones
+- CSS puro (tema dark próprio, sem framework de UI)
 
-## Code scaffolding
+**Backend**
+- [Firebase Cloud Functions](https://firebase.google.com/docs/functions) (Node 22) com
+  [Express](https://expressjs.com/) — API REST que faz proxy da API externa, com cache
+  no Firestore e *rate limiting* (gate de 30s)
+- [Firebase Hosting](https://firebase.google.com/docs/hosting) — deploy do front + rewrite
+  da API
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+**Ferramentas**
+- [Bun](https://bun.sh/) — gerenciador de pacotes e runner de scripts
 
-```bash
-ng generate component component-name
-```
+## 🔌 APIs
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+- [football-data.org](https://www.football-data.org/) (v4) — partidas, classificação e
+  artilharia da Copa. O token fica **apenas** na Cloud Function (server-side); o cliente
+  nunca o vê. As respostas são particionadas por fase/rodada e cacheadas no Firestore para
+  reduzir transferência e respeitar o limite de requisições da API.
 
-```bash
-ng generate --help
-```
+## 🚀 Rodando localmente
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+> Requer [Bun](https://bun.sh/) e a [Firebase CLI](https://firebase.google.com/docs/cli).
 
 ```bash
-ng e2e
+bun install
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Copie os arquivos de exemplo e preencha com os dados do seu projeto Firebase:
 
-## Additional Resources
+```bash
+cp .firebaserc.example .firebaserc
+cp proxy.conf.json.example proxy.conf.json
+cp src/environments/firebase.config.example.ts src/environments/firebase.config.ts
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Front (dados locais, sem API):
+
+```bash
+bun run start
+```
+
+Front + API real via emulador de Functions:
+
+```bash
+bun --cwd functions run serve   # sobe o emulador de Functions
+bun run start:api               # serve o front apontando para o emulador
+```
+
+Build de produção:
+
+```bash
+bun run build
+```
+
+## 🤖 Sobre a construção
+
+Este projeto foi feito **inteiramente com _vibe coding_** — desenvolvido em parceria com a
+IA **Claude Opus 4.8** (Anthropic), via Claude Code. Da arquitetura ao CSS, passando pela
+modelagem de dados, Cloud Functions e refinamentos de UI, tudo foi conversado e iterado
+com o modelo. É também um experimento de até onde dá para levar um produto real
+programando assim. 🚀
