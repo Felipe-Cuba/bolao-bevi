@@ -1,0 +1,230 @@
+:host {
+  display: block;
+}
+
+/* ── Pódio (top 3) ────────────────────────────────────────────────────────── */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: stretch; /* mesma altura → linhas internas alinhadas */
+  gap: 0.75rem;
+  /* Folga acima para o badge de posição (sobe -0.85rem) não tocar as abas. */
+  margin: 1.75rem 0 1.25rem;
+}
+
+.pod {
+  position: relative;
+  display: grid;
+  /* Faixas fixas: escudo | nome (2 linhas) | país | gols → tudo alinha entre os 3. */
+  grid-template-rows: 72px auto 1.1rem auto;
+  justify-items: center;
+  align-content: start;
+  gap: 0.4rem;
+  padding: 1.2rem 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--grad-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Ordem visual: 2º | 1º | 3º. O 1º recebe destaque por cor/escala, sem sair da caixa. */
+.pod--1 {
+  order: 2;
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 16%, var(--surface-2)), var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 30%, transparent), var(--shadow-card);
+}
+
+.pod--2 {
+  order: 1;
+  border-color: color-mix(in srgb, var(--silver) 45%, var(--border));
+}
+
+.pod--3 {
+  order: 3;
+  border-color: color-mix(in srgb, var(--bronze) 45%, var(--border));
+}
+
+.pod__rank {
+  position: absolute;
+  top: -0.85rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #04140d;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.pod--1 .pod__rank { background: var(--gold); }
+.pod--2 .pod__rank { background: var(--silver); }
+.pod--3 .pod__rank { background: var(--bronze); }
+
+/* Escudo centralizado na faixa de 72px (o #1 é maior, mas a faixa é a mesma). */
+.pod__crest {
+  align-self: center;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}
+
+.pod--1 .pod__crest {
+  width: 68px;
+  height: 68px;
+}
+
+.pod__name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  line-height: 1.2;
+  width: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.pod__team {
+  font-size: 0.72rem;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pod__goals {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.pod--1 .pod__goals {
+  color: var(--gold);
+}
+
+.pod__goals-lab {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+/* ── Tabela (4º em diante) ────────────────────────────────────────────────── */
+.data-table td {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.data-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.data-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+
+.table__player {
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.table__crest {
+  width: 24px;
+  height: 24px;
+}
+
+.table__name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.table__team {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.72rem;
+}
+
+.table__goals {
+  font-weight: 800;
+}
+
+.more {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.more:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .podium {
+    gap: 0.4rem;
+  }
+
+  .pod {
+    padding: 0.9rem 0.35rem 0.7rem;
+  }
+
+  .pod__crest {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pod--1 .pod__crest {
+    width: 52px;
+    height: 52px;
+  }
+
+  .pod__name {
+    font-size: 0.78rem;
+  }
+
+  .pod__goals {
+    font-size: 1.25rem;
+  }
+
+  .table__name {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .table__name > span:first-child,
+  .table__team {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

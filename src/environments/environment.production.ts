@@ -11,8 +11,10 @@ export const environment = {
   apiUrl: '/api/matches',
   // Rota base → function `api`, recurso de grupos (criar/salvar/remover palpites).
   gruposApiUrl: '/api/grupos',
+  // Rota → function `api`, recurso de artilharia.
+  scorersApiUrl: '/api/scorers',
   localSeedUrl: 'wc-response-complete.json',
-  // Usa a API real (via proxy). Em qualquer falha, cai no seed local automaticamente.
+  // Usa a API real (via proxy). Em qualquer falha, cai no cache do Firestore.
   useLocalData: false,
   firebaseConfig,
 };

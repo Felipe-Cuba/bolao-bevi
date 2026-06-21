@@ -21,6 +21,8 @@ yarn-error.log
 /functions/yarn-error.log
 /functions/.env.bolao-bevi
 /functions/.env.local
+/functions/credentials.json
+/functions/scripts/*
 /src/environments/firebase.config.ts
 
 # IDEs and editors
@@ -57,3 +59,5 @@ Thumbs.db
 
 
 wc-response-complete.json
+wc-teams-data.json
+wc-scorers-response.json

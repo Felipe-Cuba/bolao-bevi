@@ -1,0 +1,63 @@
+:host {
+  display: block;
+}
+
+.ml__group {
+  margin-bottom: 1.5rem;
+}
+
+.ml__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0 0 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border, #2a3040);
+}
+
+.ml__title::before {
+  content: '';
+  width: 0.32rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: linear-gradient(var(--accent), var(--accent-2));
+}
+
+/* Empurra o contador para a direita. */
+.ml__count {
+  margin-left: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+}
+
+/* .empty é global (styles.css) */
+
+/* Tablet: 2 por linha. */
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .ml__group {
+    margin-bottom: 1.1rem;
+  }
+
+  .grid {
+    gap: 0.6rem;
+  }
+}
+
+/* Celular estreito: 1 por linha. */
+@media (max-width: 460px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

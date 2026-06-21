@@ -1,0 +1,236 @@
+<div class="bolao">
+  @if (!entries().length) {
+  <div class="empty">
+    <svg lucideTrophy class="empty__icon" [size]="40"></svg>
+    <p>Você ainda não tem palpites no Bolão Bevi.</p>
+    <button class="cta" (click)="openModal.emit()">
+      <svg lucidePencil [size]="16"></svg> Criar palpite
+    </button>
+  </div>
+  } @else {
+  <div class="panel">
+    <!-- Seletor de palpite + ações -->
+    <header class="bar">
+      <div class="picker">
+        <svg lucideTrophy class="picker__icon" [size]="18"></svg>
+        <select class="picker__select" [value]="selectedId()" (change)="select($any($event.target).value)">
+          @for (e of entries(); track e.id) {
+          <option [value]="e.id">{{ e.name }}</option>
+          }
+        </select>
+        <svg lucideChevronDown class="picker__chevron" [size]="16"></svg>
+      </div>
+
+      <div class="bar__actions">
+        <button class="ghost" (click)="openModal.emit()" title="Editar palpites">
+          <svg lucidePencil [size]="16"></svg><span class="ghost__txt">Editar</span>
+        </button>
+        <button class="ghost" (click)="exportSelected()" title="Exportar JSON">
+          <svg lucideDownload [size]="16"></svg><span class="ghost__txt">Exportar</span>
+        </button>
+        <label class="ghost" title="Importar JSON">
+          <svg lucideUpload [size]="16"></svg><span class="ghost__txt">Importar</span>
+          <input type="file" accept="application/json,.json" hidden (change)="onImportFile($event)" />
+        </label>
+      </div>
+    </header>
+
+    @if (feedback(); as fb) {
+    <p class="feedback" [class.feedback--err]="fb.kind === 'err'">{{ fb.text }}</p>
+    }
+
+    @if (liveRows().length) {
+    <section class="live">
+      <h3 class="live__title"><span class="dot"></span> Ao vivo</h3>
+      @for (r of liveRows(); track r.id) {
+      <div class="lrow">
+        <span class="lrow__team">
+          <img class="lrow__crest" [src]="r.homeCrest" [alt]="r.homeTla" loading="lazy" />
+          {{ r.homeTla }}
+        </span>
+        <span class="lrow__score">
+          {{ r.realHome ?? '-' }}<span class="lrow__x">×</span>{{ r.realAway ?? '-' }}
+        </span>
+        <span class="lrow__team lrow__team--away">
+          {{ r.awayTla }}
+          <img class="lrow__crest" [src]="r.awayCrest" [alt]="r.awayTla" loading="lazy" />
+        </span>
+        @if (r.palpite; as p) {
+        <span class="lrow__guess" [attr.data-pts]="r.pts">
+          palpite {{ p.home }}×{{ p.away }}
+          @if (r.ptsLabel) { · {{ r.ptsLabel }} }
+        </span>
+        }
+      </div>
+      }
+    </section>
+    }
+
+    @if (nextRow(); as n) {
+    <section class="next">
+      <h3 class="next__title"><svg lucideCalendarDays [size]="14"></svg> Próximo jogo</h3>
+      <div class="lrow">
+        <span class="lrow__team">
+          <img class="lrow__crest" [src]="n.homeCrest" [alt]="n.homeTla" loading="lazy" />
+          {{ n.homeTla }}
+        </span>
+        <span class="lrow__score lrow__when">{{ n.when }}</span>
+        <span class="lrow__team lrow__team--away">
+          {{ n.awayTla }}
+          <img class="lrow__crest" [src]="n.awayCrest" [alt]="n.awayTla" loading="lazy" />
+        </span>
+        @if (n.palpite; as p) {
+        <span class="lrow__guess">palpite {{ p.home }}×{{ p.away }}</span>
+        } @else {
+        <span class="lrow__guess lrow__guess--empty">sem palpite</span>
+        }
+      </div>
+    </section>
+    }
+
+    @if (tally(); as t) {
+    <!-- Hero: total + aproveitamento -->
+    <section class="hero">
+      <div class="hero__main">
+        <svg lucideTrophy class="hero__icon" [size]="26"></svg>
+        <div class="hero__num">{{ t.total }}</div>
+        <div class="hero__cap">pontos</div>
+        @if (potencial() > 0) {
+        <span class="hero__potencial" title="Máximo ainda obtível na fase em andamento">
+          +{{ potencial() }} em jogo
+        </span>
+        }
+      </div>
+      <div class="hero__side">
+        <div class="gauge" [style.--p.%]="hitRate()">
+          <span class="gauge__val">{{ hitRate() }}%</span>
+        </div>
+        <span class="hero__cap">aproveitamento</span>
+        <span class="hero__sub">{{ t.jogosPontuados }} jogos pontuados</span>
+      </div>
+    </section>
+
+    <!-- Faixas de acerto: Cravou / Acertou / Errou (clicáveis → modal de detalhe) -->
+    <section class="tiers">
+      <button type="button" class="tier tier--cravou" [disabled]="t.cravou === 0"
+        (click)="openCategoria('cravou')" title="Ver palpites cravados">
+        <svg lucideCrosshair [size]="20"></svg>
+        <span class="tier__val">{{ t.cravou }}</span>
+        <span class="tier__lab">Cravou</span>
+        <span class="tier__hint">+3 · placar exato</span>
+      </button>
+      <button type="button" class="tier tier--acertou" [disabled]="t.acertou === 0"
+        (click)="openCategoria('acertou')" title="Ver palpites certos">
+        <svg lucideThumbsUp [size]="20"></svg>
+        <span class="tier__val">{{ t.acertou }}</span>
+        <span class="tier__lab">Acertou</span>
+        <span class="tier__hint">+1 · resultado</span>
+      </button>
+      <button type="button" class="tier tier--errou" [disabled]="t.errou === 0"
+        (click)="openCategoria('errou')" title="Ver palpites errados">
+        <svg lucideX [size]="20"></svg>
+        <span class="tier__val">{{ t.errou }}</span>
+        <span class="tier__lab">Errou</span>
+        <span class="tier__hint">0 · fora</span>
+      </button>
+    </section>
+
+    <!-- Heatmap: pontos por grupo (células com pontos abrem a modal do grupo) -->
+    <section class="card">
+      <h3 class="card__title">
+        <svg lucideGrid3x3 [size]="15"></svg> Pontos por grupo
+      </h3>
+      <div class="heat">
+        @for (c of groupCells(); track c.label) {
+        <button type="button" class="heat__cell" [class.heat__cell--empty]="c.value === 0"
+          [class.heat__cell--clickable]="c.played" [disabled]="!c.played" [style.--h]="c.heat"
+          (click)="openGrupo(c.label)"
+          [title]="'Grupo ' + c.label + ': ' + c.value + ' pts'">
+          <span class="heat__group">{{ c.label }}</span>
+          <span class="heat__val">{{ c.value }}</span>
+        </button>
+        }
+      </div>
+    </section>
+
+    <!-- Pontos por fase/rodada (progressivo: só fases com jogo montado) -->
+    @if (phaseCells().length) {
+    <section class="card">
+      <h3 class="card__title">
+        <svg lucideLayers [size]="15"></svg> Pontos por fase
+      </h3>
+      <div class="phases">
+        @for (f of phaseCells(); track f.label) {
+        <div class="phase-cell" [class.phase-cell--empty]="f.value === 0" [style.--h]="f.heat"
+          [title]="f.label + ': ' + f.value + ' pts · ' + f.jogos + ' jogo(s)'">
+          <span class="phase-cell__lab">{{ f.label }}</span>
+          <span class="phase-cell__val">{{ f.value }}</span>
+        </div>
+        }
+      </div>
+    </section>
+    }
+
+    <!-- Mini-gráfico de colunas: pontos por dia (melhor/pior em destaque) -->
+    <section class="card">
+      <h3 class="card__title">
+        <svg lucideCalendarDays [size]="15"></svg> Pontos por dia
+      </h3>
+      @if (dayColumns().length) {
+      <div class="days">
+        @for (d of dayColumns(); track d.label) {
+        <div class="day" [class.day--best]="d.isBest" [class.day--worst]="d.isWorst"
+          [title]="d.points + ' pts · ' + d.jogos + ' jogo(s)'">
+          <span class="day__pts">{{ d.points }}</span>
+          <div class="day__track">
+            <div class="day__bar" [style.height.%]="d.height * 100"></div>
+          </div>
+          <span class="day__lab">{{ d.label }}</span>
+        </div>
+        }
+      </div>
+      @if (bestDayLabel(); as best) {
+      <p class="day-resumo">
+        <span class="day-resumo__best">Melhor: {{ best }}</span>
+        @if (worstDayLabel(); as worst) {
+        <span class="day-resumo__worst">Pior: {{ worst }}</span>
+        }
+      </p>
+      }
+      } @else {
+      <p class="card__empty">Nenhum dia com jogos pontuados ainda.</p>
+      }
+    </section>
+    }
+
+    <!-- Ranking comparativo (quando há mais de um palpite) -->
+    @if (ranking().length > 1) {
+    <section class="card">
+      <h3 class="card__title">
+        <svg lucideMedal [size]="15"></svg> Ranking dos palpites
+      </h3>
+      <ol class="rank">
+        @for (r of ranking(); track r.entry.id; let i = $index) {
+        <li class="rank__row" [class.rank__row--active]="r.entry.id === selectedId()" [class.rank__row--top]="i === 0"
+          (click)="select(r.entry.id)">
+          <span class="rank__pos">
+            @if (i === 0) {
+            <svg lucideMedal [size]="18"></svg>
+            } @else {
+            {{ i + 1 }}
+            }
+          </span>
+          <span class="rank__name">{{ r.entry.name }}</span>
+          <span class="rank__pts">{{ r.total }}<small>pts</small></span>
+        </li>
+        }
+      </ol>
+    </section>
+    }
+  </div>
+  }
+</div>
+
+@if (detalhe(); as d) {
+  <app-bolao-detalhe-modal [title]="d.title" [items]="d.items" (close)="closeDetalhe()" />
+}

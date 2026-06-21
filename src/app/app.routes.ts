@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { WcPage } from './wc/wc-page';
+import { WcPage } from './tabs/wc-page.component';
 
 export const routes: Routes = [
   { path: '', component: WcPage },

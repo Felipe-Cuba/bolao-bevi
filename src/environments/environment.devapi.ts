@@ -17,6 +17,7 @@ export const environment = {
   production: false,
   apiUrl: '/api/matches',
   gruposApiUrl: '/api/grupos',
+  scorersApiUrl: '/api/scorers',
   localSeedUrl: 'wc-response-complete.json',
   useLocalData: false,
   firebaseConfig,

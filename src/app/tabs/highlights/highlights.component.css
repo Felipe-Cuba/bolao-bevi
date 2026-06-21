@@ -1,0 +1,172 @@
+:host {
+  display: block;
+}
+
+/* ── Destaque: ao vivo / próximo / último, 3 cards lado a lado ──────────────── */
+.spotlight {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.spotlight__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* O card preenche a altura do item → todos os cards do topo ficam alinhados.
+   (o :host do match-card é flex e estica o .card internamente) */
+.spotlight__item app-match-card {
+  flex: 1;
+}
+
+.spotlight__label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+  padding-left: 0.55rem;
+  color: var(--muted);
+  border-left: 3px solid var(--accent);
+}
+
+.spotlight__label--live {
+  border-left-color: var(--live);
+  color: var(--live);
+}
+
+.spotlight__label--done {
+  border-left-color: var(--win);
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--live, #ff4d4f);
+  animation: blink 1.2s ease-in-out infinite; /* keyframes em styles.css (global) */
+}
+
+/* ── Listas roláveis (resultados / próximos) ────────────────────────────── */
+.hl {
+  margin-bottom: 1.75rem;
+}
+
+/* ── Corpo: listas + sidebar de artilheiros ───────────────────────────────── */
+.hl-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.hl-lists {
+  min-width: 0;
+}
+
+/* A sidebar acompanha a rolagem (desktop). */
+.hl-aside {
+  position: sticky;
+  top: 1rem;
+}
+
+.hl__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0 0 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hl__title::before {
+  content: '';
+  width: 0.32rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: linear-gradient(var(--accent), var(--accent-2));
+}
+
+/* Link "Ver todos" alinhado à direita do título da sidebar. */
+.hl__link {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hl__link:hover {
+  text-decoration: underline;
+}
+
+.list {
+  border: 1px solid var(--border, #2a3040);
+  border-radius: var(--radius);
+  background: var(--grad-surface);
+  box-shadow: var(--shadow-card);
+  max-height: 22rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Cabeçalho de fase fixo no topo ao rolar a lista. */
+.phase {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid var(--border, #2a3040);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+/* .empty é global (styles.css) */
+
+/* ── Tablet: empilha a sidebar abaixo das listas ──────────────────────────── */
+@media (max-width: 900px) {
+  .hl-body {
+    grid-template-columns: 1fr;
+  }
+
+  .hl-aside {
+    position: static;
+    order: -1; /* artilheiros logo após o spotlight */
+  }
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .spotlight {
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .hl {
+    margin-bottom: 1.25rem;
+  }
+
+  .hl__title {
+    font-size: 1rem;
+  }
+
+  .list {
+    max-height: 20rem;
+  }
+}

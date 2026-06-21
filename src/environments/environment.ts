@@ -14,6 +14,8 @@ export const environment = {
   apiUrl: '',
   // URL da Function de grupos. Vazio em local puro = modo grupo indisponível (use devapi).
   gruposApiUrl: '',
+  // URL da Function de artilharia. Vazio em local puro = lê só o Firestore (se houver).
+  scorersApiUrl: '',
   // Caminho do seed servido como asset estático (fonte/fallback local).
   localSeedUrl: 'wc-response-complete.json',
   // Em dev, lê SEMPRE o JSON local. Mude para false para testar via apiUrl.

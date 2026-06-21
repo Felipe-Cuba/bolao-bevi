@@ -1,0 +1,79 @@
+:host {
+  display: block;
+}
+
+/* .surface-card (global) cuida de fundo/borda/raio/padding. */
+.card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.card__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.card__link {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.card__link:hover {
+  text-decoration: underline;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+}
+
+.row__pos {
+  width: 1.2rem;
+  text-align: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.row--lead .row__pos {
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.row--lead .row__name {
+  color: var(--gold);
+}
+
+.row__crest {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+/* .truncate (global) cuida do corte; aqui só o peso e o flex. */
+.row__name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.row__goals {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

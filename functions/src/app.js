@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 
 import { matchesRouter } from './routes/matches.routes.js';
+import { scorersRouter } from './routes/scorers.routes.js';
 import { gruposRouter } from './routes/grupos.routes.js';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.js';
 
@@ -23,6 +24,7 @@ export function createApp() {
 
   for (const base of ['/api', '']) {
     app.use(`${base}/matches`, matchesRouter);
+    app.use(`${base}/scorers`, scorersRouter);
     app.use(`${base}/grupos`, gruposRouter);
   }
 
