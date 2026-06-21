@@ -19,8 +19,9 @@ yarn-error.log
 /functions/firebase-debug.log
 /functions/firestore-debug.log
 /functions/yarn-error.log
-/functions/.env.bolao-bevi
-/functions/.env.local
+# .env das Functions (o Firebase usa .env.<project-id>); versiona só o .example
+/functions/.env*
+!/functions/.env.example
 /functions/credentials.json
 /functions/scripts/*
 /src/environments/firebase.config.ts
@@ -65,3 +66,5 @@ Thumbs.db
 wc-response-complete.json
 wc-teams-data.json
 wc-scorers-response.json
+
+*.log

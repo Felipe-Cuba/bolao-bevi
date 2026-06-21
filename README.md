@@ -57,6 +57,28 @@ cp proxy.conf.json.example proxy.conf.json
 cp src/environments/firebase.config.example.ts src/environments/firebase.config.ts
 ```
 
+### Variáveis de ambiente das Functions (`.env`)
+
+A API (Cloud Function) precisa do token da [football-data.org](https://www.football-data.org/client/register).
+**Atenção ao nome do arquivo:** o Firebase carrega automaticamente o
+`.env.<firebase-project-id>` — **não** o `.env` comum. O sufixo tem que ser exatamente o
+*project id* do seu `.firebaserc`.
+
+```bash
+# substitua SEU_PROJECT_ID pelo id do projeto (o mesmo do .firebaserc)
+cp functions/.env.example functions/.env.SEU_PROJECT_ID
+```
+
+Depois edite o arquivo e preencha o token:
+
+```dotenv
+FOOTBALL_DATA_TOKEN=seu_token_aqui
+```
+
+> Exemplo: se o seu projeto é `meu-bolao-123`, o arquivo deve se chamar
+> `functions/.env.meu-bolao-123`. Todos os `functions/.env*` são ignorados pelo git
+> (exceto o `.env.example`), então o token nunca é versionado.
+
 Front (dados locais, sem API):
 
 ```bash
