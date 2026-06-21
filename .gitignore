@@ -25,6 +25,10 @@ yarn-error.log
 /functions/scripts/*
 /src/environments/firebase.config.ts
 
+# Config local do Firebase (project id / região) — use os arquivos .example
+/.firebaserc
+/proxy.conf.json
+
 # IDEs and editors
 .idea/
 .project
