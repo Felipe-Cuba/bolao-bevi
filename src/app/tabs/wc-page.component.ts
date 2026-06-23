@@ -16,13 +16,14 @@ import { BREAKPOINT } from 'ngx-oneforall/constants';
 import { GrupoService } from '@core/grupo.service';
 
 import { MatchesApi } from '@core/matches.api';
-import { Match, MatchStatus, Scorer } from '@shared/models/match.model';
+import { Match, MatchPart, MatchStatus, Scorer } from '@shared/models/match.model';
 import {
   buildHighlights,
   buildStandings,
   distinctGroups,
   groupMatches,
 } from '@shared/utils/match-derivations.util';
+import { buildBracketTree } from '@shared/utils/bracket-tree.util';
 import {
   LucideTrophy,
   LucideLayoutDashboard,
@@ -34,17 +35,19 @@ import {
   LucideCheck,
   LucideLogOut,
   LucideTarget,
+  LucideGitFork,
 } from '@lucide/angular';
 
 import { HighlightsComponent } from './highlights/highlights.component';
 import { MatchList } from '@shared/components/match-list/match-list.component';
 import { StandingsTable } from './standings/standings.component';
+import { BracketView } from './bracket/bracket.component';
 import { ScorersTable } from './scorers/scorers.component';
 import { BolaoModal } from './bolao/components/entry-modal/entry-modal.component';
 import { BolaoPanel } from './bolao/panel.component';
 import { GrupoModal } from './bolao/components/grupo-modal/grupo-modal.component';
 
-type Tab = 'highlights' | 'matches' | 'standings' | 'scorers' | 'bolao';
+type Tab = 'highlights' | 'matches' | 'standings' | 'scorers' | 'bracket' | 'bolao';
 
 interface Filters {
   tab: Tab;
@@ -61,6 +64,7 @@ const DEFAULT_FILTERS: Filters = { tab: 'highlights', status: 'ALL', group: 'ALL
     HighlightsComponent,
     MatchList,
     StandingsTable,
+    BracketView,
     ScorersTable,
     BolaoModal,
     BolaoPanel,
@@ -75,6 +79,7 @@ const DEFAULT_FILTERS: Filters = { tab: 'highlights', status: 'ALL', group: 'ALL
     LucideCheck,
     LucideLogOut,
     LucideTarget,
+    LucideGitFork,
   ],
   templateUrl: './wc-page.component.html',
   styleUrl: './wc-page.component.css',
@@ -100,8 +105,19 @@ export class WcPage {
   // Lazy — só dispara na aba Classificação. Partes já encerradas vêm do cache (imutáveis).
   readonly standingsQuery = injectQuery(() => ({
     ...this.matchesApi.partsQueryOptions(['group-1', 'group-2', 'group-3']),
-    enabled: this.filters().tab === 'standings',
+    enabled: this.filters().tab === 'standings' || this.filters().tab === 'bracket',
   }));
+
+  // Mata-mata: lê as partes do KO (oitavas→final) p/ preencher a árvore do chaveamento.
+  // Lazy — só dispara na aba Chaveamento. Partes ainda vazias (placeholders) viram "A definir".
+  readonly knockoutQuery = injectQuery(() => ({
+    ...this.matchesApi.partsQueryOptions(['last-32', 'last-16', 'quarters', 'semis', 'final']),
+    enabled: this.filters().tab === 'bracket',
+  }));
+
+  private readonly knockoutParts = computed<MatchPart[]>(
+    () => this.knockoutQuery.data()?.parts ?? [],
+  );
 
   /** Jogos da fase de grupos vindos das partições (para a classificação). */
   private readonly groupMatches = computed<Match[]>(() =>
@@ -178,6 +194,9 @@ export class WcPage {
   // Derivações (não disparam request).
   readonly highlights = computed(() => buildHighlights(this.matches()));
   readonly standings = computed(() => buildStandings(this.groupMatches()));
+  readonly bracketTree = computed(() =>
+    buildBracketTree(this.standings(), this.knockoutParts()),
+  );
   readonly groups = computed(() => distinctGroups(this.matches()));
 
   readonly statusOptions: (MatchStatus | 'ALL')[] = [
@@ -211,9 +230,12 @@ export class WcPage {
   }
 
   // Atualização manual: bloqueada durante o cooldown de 30s (gate do banco).
+  // Atualiza partidas E artilheiros no mesmo clique; o gate de 30s server-side de cada
+  // endpoint evita chamadas reais redundantes à API (rate limit 10/min).
   refresh(): void {
     if (this.refreshBlocked() || this.query.isFetching()) return;
     this.query.refetch();
+    this.scorersQuery.refetch();
   }
 
   openBolao(): void {

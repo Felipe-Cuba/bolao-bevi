@@ -15,8 +15,8 @@
 .pod {
   position: relative;
   display: grid;
-  /* Faixas fixas: escudo | nome (2 linhas) | país | gols → tudo alinha entre os 3. */
-  grid-template-rows: 72px auto 1.1rem auto;
+  /* Faixas fixas: escudo | nome (2 linhas) | país | gols | desempate → alinha entre os 3. */
+  grid-template-rows: 72px auto 1.1rem auto auto;
   justify-items: center;
   align-content: start;
   gap: 0.4rem;
@@ -124,6 +124,37 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--muted);
+}
+
+/* Critérios de desempate (assistências, pênaltis, jogos). */
+.pod__stats {
+  margin: 0.35rem 0 0;
+  padding-top: 0.4rem;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.pod__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+}
+
+.pod__stat dt {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.pod__stat dd {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Tabela (4º em diante) ────────────────────────────────────────────────── */
