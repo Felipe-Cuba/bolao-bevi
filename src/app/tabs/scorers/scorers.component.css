@@ -2,14 +2,27 @@
   display: block;
 }
 
+/* Ângulo animável do "LED" que gira na borda dos cards do pódio. */
+@property --led-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes led-spin {
+  to {
+    --led-angle: 360deg;
+  }
+}
+
 /* ── Pódio (top 3) ────────────────────────────────────────────────────────── */
 .podium {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  align-items: stretch; /* mesma altura → linhas internas alinhadas */
+  /* Pódio "de verdade": cards alinhados pela BASE, com alturas escalonadas. */
+  align-items: end;
   gap: 0.75rem;
-  /* Folga acima para o badge de posição (sobe -0.85rem) não tocar as abas. */
-  margin: 1.75rem 0 1.25rem;
+  margin: 3.25rem 0 2.75rem;
 }
 
 .pod {
@@ -30,9 +43,39 @@
   width: 100%;
 }
 
-/* Ordem visual: 2º | 1º | 3º. O 1º recebe destaque por cor/escala, sem sair da caixa. */
+/* LED girando: conic-gradient animado atrás do card, recortado para mostrar só a borda.
+   Núcleo branco no meio da faixa dá o brilho de "led aceso"; o drop-shadow espalha o glow. */
+.pod::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--led-angle),
+    transparent 0turn,
+    var(--led-color) 0.06turn,
+    #fff 0.11turn,
+    var(--led-color) 0.16turn,
+    transparent 0.34turn,
+    transparent 1turn
+  );
+  filter: drop-shadow(0 0 4px var(--led-color)) brightness(1.2);
+  /* Mostra apenas a faixa de borda: preenche menos o recorte interno. */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: led-spin 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Ordem visual: 2º | 1º | 3º. Alturas escalonadas formam o degrau do pódio. */
 .pod--1 {
   order: 2;
+  --led-color: var(--gold);
+  padding-top: 1.9rem;
+  padding-bottom: 1.7rem;
   border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
   background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 16%, var(--surface-2)), var(--surface));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 30%, transparent), var(--shadow-card);
@@ -40,12 +83,24 @@
 
 .pod--2 {
   order: 1;
+  --led-color: var(--silver);
+  padding-top: 1.3rem;
+  padding-bottom: 1.1rem;
   border-color: color-mix(in srgb, var(--silver) 45%, var(--border));
 }
 
 .pod--3 {
   order: 3;
+  --led-color: var(--bronze);
   border-color: color-mix(in srgb, var(--bronze) 45%, var(--border));
+}
+
+/* O 1º começa com uma defasagem para os LEDs não girarem em uníssono. */
+.pod--1::before {
+  animation-delay: -1s;
+}
+.pod--3::before {
+  animation-delay: -2s;
 }
 
 .pod__rank {
@@ -53,6 +108,7 @@
   top: -0.85rem;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 1; /* acima do LED girando na borda */
   width: 1.7rem;
   height: 1.7rem;
   border-radius: 50%;

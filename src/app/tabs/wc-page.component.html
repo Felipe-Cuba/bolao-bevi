@@ -227,13 +227,13 @@
         }
       }
       @case ('bolao') {
-        <app-bolao-panel [matches]="matches()" (openModal)="openBolao()" />
+        <app-bolao-panel [matches]="matches()" (openModal)="openBolaoAt($event)" />
       }
     }
   }
 
   @if (bolaoOpen()) {
-    <app-bolao-modal [matches]="matches()" (close)="closeBolao()" />
+    <app-bolao-modal [matches]="matches()" [initialId]="bolaoInitialId()" (close)="closeBolao()" />
   }
 
   @if (grupoModalOpen()) {

@@ -1,122 +1,97 @@
-// Simulação do chaveamento de 16-avos (round of 32) da Copa 2026. Derivação PURA sobre a
-// classificação (saída de `buildStandings`) — não faz request. Reflete "se a fase de grupos
-// congelasse agora". As regras de cruzamento (3 blocos) são as oficiais da FIFA descritas em
-// context.md: 12 grupos (A–L), classificam 1º + 2º de cada grupo + os 8 melhores terceiros.
+// Simulação dos 16-avos (LAST_32) da Copa 2026 a partir da classificação atual. Derivação
+// PURA (sem request): reflete "se a fase de grupos congelasse agora". Consome o schema
+// declarativo (bracket-schema) — a regra de cruzamento dos jogos vem de lá, não daqui.
+//
+// Resolução:
+//   • lados fixos (1º/2º) → linha 0/1 do grupo na classificação;
+//   • lados de melhor-terceiro → ranqueia os 12 terceiros, pega os 8 melhores e os atribui
+//     aos 8 jogos respeitando a PRIORIDADE por letra de cada jogo (ordem da string "3ºABCDF"),
+//     via backtracking, garantindo emparelhamento completo sem conflito.
 
 import { Team } from '@shared/models/match.model';
 import { GroupStanding, StandingRow } from '@shared/utils/match-derivations.util';
-
-export type BracketBlock = 1 | 2 | 3;
+import {
+  GroupLetter,
+  SchemaMatch,
+  SlotRef,
+  last32Games,
+} from '@shared/utils/bracket-schema.util';
 
 export interface BracketSlot {
   /** Time resolvido, ou null quando o slot ainda não pode ser determinado. */
   team: Team | null;
   /** Rótulo curto: "1º A", "2º F", "3º H" ou "3º (melhor terceiro)". */
   label: string;
-  /** Letra do grupo de origem ("A".."L"), quando conhecida — base da regra de não-repetição. */
+  /** Letra do grupo de origem ("A".."L"), quando conhecida. */
   group: string | null;
 }
 
 export interface SimulatedMatch {
-  /** Id estável p/ @track, ex.: "B1-1", "B3-A". */
-  id: string;
-  block: BracketBlock;
+  /** Número oficial do jogo (73..88). */
+  num: number;
   home: BracketSlot;
   away: BracketSlot;
 }
 
 export interface SimulatedBracket {
-  /** 16 confrontos, ordenados bloco 1 → 2 → 3. */
-  matches: SimulatedMatch[];
+  /** Os 16 confrontos de 16-avos, indexados pelo número do jogo. */
+  byNum: Map<number, SimulatedMatch>;
   /** true quando os 12 grupos têm um 3º colocado (8 melhores terceiros definíveis). */
   thirdsResolved: boolean;
   /** true quando todos os 16 confrontos têm os dois times definidos. */
   blocksComplete: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Constantes das regras (context.md)
-// ---------------------------------------------------------------------------
-
-/** Bloco 1 — 1º vs 2º (fixo): [grupo do 1º, grupo do 2º]. */
-const BLOCK_1: [string, string][] = [
-  ['C', 'F'],
-  ['F', 'C'],
-  ['H', 'J'],
-  ['J', 'H'],
+const ALL_GROUPS: readonly GroupLetter[] = [
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
 ];
 
-/** Bloco 2 — 2º vs 2º (fixo): [grupo do 2º (casa), grupo do 2º (fora)]. */
-const BLOCK_2: [string, string][] = [
-  ['A', 'B'],
-  ['D', 'G'],
-  ['E', 'I'],
-  ['K', 'L'],
-];
-
-/** Bloco 3 — 1º colocado (host) → grupos cujos 3ºs ele pode enfrentar. K por eliminação. */
-const BLOCK_3_ALLOWED: Record<string, string[]> = {
-  A: ['C', 'E', 'F', 'H', 'I'],
-  B: ['E', 'F', 'G', 'I', 'J'],
-  D: ['B', 'E', 'F', 'I', 'J'],
-  E: ['A', 'B', 'C', 'D', 'F'],
-  G: ['A', 'E', 'H', 'I', 'J'],
-  I: ['C', 'D', 'F', 'G', 'H'],
-  L: ['E', 'H', 'I', 'J', 'K'],
-};
-
-/** Ordem de atribuição dos 1ºs no Bloco 3; K por último (recebe o terceiro remanescente). */
-const BLOCK_3_FIRSTS = ['A', 'B', 'D', 'E', 'G', 'I', 'L', 'K'] as const;
-
-const ALL_GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const;
-
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers de classificação
 // ---------------------------------------------------------------------------
 
 /** Mapa letra-do-grupo → linhas já ordenadas (buildStandings usa chaves "GROUP_X"). */
 function rowsByGroup(standings: GroupStanding[]): Map<string, StandingRow[]> {
   const map = new Map<string, StandingRow[]>();
   for (const s of standings) {
-    const letter = s.group.replace('GROUP_', '');
-    map.set(letter, s.rows);
+    map.set(s.group.replace('GROUP_', ''), s.rows);
   }
   return map;
 }
 
-/** N-ésima linha (0-based) de um grupo, ou undefined se ainda não existe. */
-function nth(rows: StandingRow[] | undefined, i: number): StandingRow | undefined {
-  return rows?.[i];
-}
-
 /** Slot de um colocado (1º/2º/3º) de um grupo. `ordinal` é 1, 2 ou 3 (para o rótulo). */
-function slotFor(
+function placedSlot(
   rows: StandingRow[] | undefined,
   index: number,
   ordinal: number,
-  group: string,
+  group: GroupLetter,
 ): BracketSlot {
-  const row = nth(rows, index);
+  const row = rows?.[index];
   return { team: row?.team ?? null, label: `${ordinal}º ${group}`, group };
 }
 
+/** Slot vazio de melhor-terceiro (quando os terceiros ainda não estão definidos). */
+function unresolvedThird(): BracketSlot {
+  return { team: null, label: '3º (melhor terceiro)', group: null };
+}
+
 interface ThirdEntry {
-  group: string;
+  group: GroupLetter;
   row: StandingRow;
 }
 
 /**
  * Ranqueia os terceiros colocados dos 12 grupos por pontos → saldo → gols pró, com desempate
- * estável final por letra do grupo (só p/ a simulação não "piscar" entre refreshes; não é o
- * critério oficial FIFA). Retorna os 8 melhores e se há terceiros nos 12 grupos.
+ * estável final por letra (só p/ a simulação não "piscar" entre refreshes; não é critério
+ * oficial FIFA). Retorna os 8 melhores e se há terceiros nos 12 grupos.
  */
 function bestEightThirds(byGrp: Map<string, StandingRow[]>): {
-  ranked: ThirdEntry[];
+  groups: GroupLetter[];
   eligible: boolean;
 } {
   const thirds: ThirdEntry[] = [];
   for (const g of ALL_GROUPS) {
-    const row = nth(byGrp.get(g), 2);
+    const row = byGrp.get(g)?.[2];
     if (row) thirds.push({ group: g, row });
   }
   thirds.sort(
@@ -126,33 +101,53 @@ function bestEightThirds(byGrp: Map<string, StandingRow[]>): {
       y.row.goalsFor - x.row.goalsFor ||
       x.group.localeCompare(y.group),
   );
-  return { ranked: thirds.slice(0, 8), eligible: thirds.length === ALL_GROUPS.length };
+  return {
+    groups: thirds.slice(0, 8).map((t) => t.group),
+    eligible: thirds.length === ALL_GROUPS.length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Atribuição dos melhores-terceiros aos jogos (prioridade por letra + backtracking)
+// ---------------------------------------------------------------------------
+
+interface ThirdGame {
+  num: number;
+  hostGroup: GroupLetter | null; // grupo do 1º colocado mandante (salvaguarda anti-próprio-grupo)
+  priority: GroupLetter[]; // ordem de preferência (string "3ºABCDF" do md)
+}
+
+/** Letra do grupo do lado "first" de um jogo (o host do confronto de 3º). */
+function hostGroupOf(game: SchemaMatch): GroupLetter | null {
+  const fixed: SlotRef = game.home.kind === 'third' ? game.away : game.home;
+  return fixed.kind === 'first' ? fixed.group : null;
 }
 
 /**
- * Atribui, por backtracking, cada host (1º colocado) a um dos 8 melhores terceiros, respeitando
- * `BLOCK_3_ALLOWED` e a regra inviolável de não enfrentar time do próprio grupo. K recebe o
- * terceiro remanescente. Retorna host→grupo-do-terceiro, ou null se não houver emparelhamento.
+ * Atribui cada jogo de 3º a um dos grupos classificados, iterando os candidatos NA ORDEM da
+ * prioridade do jogo. Backtracking garante uma atribuição completa (todos os jogos, sem
+ * repetir grupo, nunca o próprio grupo do host). Ordem fixa dos jogos + prioridade tornam a
+ * primeira solução estável entre refreshes. Retorna num→grupo, ou null se inviável.
  */
-function assignBlock3(qualifiedThirds: string[]): Record<string, string> | null {
-  const result: Record<string, string> = {};
-  const used = new Set<string>();
+function assignThirds(
+  games: ThirdGame[],
+  qualified: Set<GroupLetter>,
+): Map<number, GroupLetter> | null {
+  const result = new Map<number, GroupLetter>();
+  const used = new Set<GroupLetter>();
 
-  const solve = (index: number): boolean => {
-    if (index === BLOCK_3_FIRSTS.length) return true;
-    const host = BLOCK_3_FIRSTS[index];
-    const candidates = qualifiedThirds.filter((t) => {
-      if (used.has(t)) return false;
-      if (t === host) return false; // regra inviolável: nunca o próprio grupo
-      if (host === 'K') return true; // K: qualquer terceiro restante
-      return BLOCK_3_ALLOWED[host].includes(t);
-    });
-    for (const t of candidates) {
-      result[host] = t;
-      used.add(t);
-      if (solve(index + 1)) return true;
-      used.delete(t);
-      delete result[host];
+  const solve = (i: number): boolean => {
+    if (i === games.length) return true;
+    const game = games[i];
+    for (const g of game.priority) {
+      if (!qualified.has(g)) continue;
+      if (used.has(g)) continue;
+      if (g === game.hostGroup) continue; // salvaguarda inviolável
+      result.set(game.num, g);
+      used.add(g);
+      if (solve(i + 1)) return true;
+      used.delete(g);
+      result.delete(game.num);
     }
     return false;
   };
@@ -164,50 +159,57 @@ function assignBlock3(qualifiedThirds: string[]): Record<string, string> | null 
 // Entrada principal
 // ---------------------------------------------------------------------------
 
+/** Resolve um lado fixo (1º/2º) de um jogo. Lados de 3º são resolvidos à parte. */
+function fixedSlot(ref: SlotRef, byGrp: Map<string, StandingRow[]>): BracketSlot {
+  if (ref.kind === 'first') return placedSlot(byGrp.get(ref.group), 0, 1, ref.group);
+  if (ref.kind === 'second') return placedSlot(byGrp.get(ref.group), 1, 2, ref.group);
+  return unresolvedThird(); // 'third' sem atribuição ainda
+}
+
 /** Monta o chaveamento simulado de 16-avos a partir da classificação atual. */
 export function buildSimulatedBracket(standings: GroupStanding[]): SimulatedBracket {
   const byGrp = rowsByGroup(standings);
-  const matches: SimulatedMatch[] = [];
+  const games = last32Games();
 
-  // Bloco 1 — 1º X vs 2º Y
-  BLOCK_1.forEach(([first, second], i) => {
-    matches.push({
-      id: `B1-${i + 1}`,
-      block: 1,
-      home: slotFor(byGrp.get(first), 0, 1, first),
-      away: slotFor(byGrp.get(second), 1, 2, second),
+  // 1. Ranqueia os 8 melhores terceiros.
+  const { groups: qualifiedThirds, eligible } = bestEightThirds(byGrp);
+
+  // 2. Atribui-os aos jogos de 3º (prioridade por letra + backtracking).
+  const thirdGames: ThirdGame[] = games
+    .filter((g) => g.home.kind === 'third' || g.away.kind === 'third')
+    .map((g) => {
+      const thirdRef = g.home.kind === 'third' ? g.home : g.away;
+      return {
+        num: g.num,
+        hostGroup: hostGroupOf(g),
+        priority: thirdRef.kind === 'third' ? thirdRef.priority : [],
+      };
     });
-  });
 
-  // Bloco 2 — 2º X vs 2º Y
-  BLOCK_2.forEach(([a, b], i) => {
-    matches.push({
-      id: `B2-${i + 1}`,
-      block: 2,
-      home: slotFor(byGrp.get(a), 1, 2, a),
-      away: slotFor(byGrp.get(b), 1, 2, b),
-    });
-  });
+  const assignment =
+    qualifiedThirds.length === 8
+      ? assignThirds(thirdGames, new Set(qualifiedThirds))
+      : null;
 
-  // Bloco 3 — 1º host vs 3º atribuído (melhores terceiros)
-  const { ranked, eligible } = bestEightThirds(byGrp);
-  const qualifiedThirds = ranked.map((t) => t.group);
-  const assignment = qualifiedThirds.length === 8 ? assignBlock3(qualifiedThirds) : null;
+  // 3. Resolve cada confronto: fixos direto, terceiros pela atribuição.
+  const resolveSide = (ref: SlotRef, num: number): BracketSlot => {
+    if (ref.kind !== 'third') return fixedSlot(ref, byGrp);
+    const group = assignment?.get(num) ?? null;
+    return group ? placedSlot(byGrp.get(group), 2, 3, group) : unresolvedThird();
+  };
 
-  for (const host of BLOCK_3_FIRSTS) {
-    const thirdGroup = assignment?.[host] ?? null;
-    const away: BracketSlot = thirdGroup
-      ? slotFor(byGrp.get(thirdGroup), 2, 3, thirdGroup)
-      : { team: null, label: '3º (melhor terceiro)', group: null };
-    matches.push({
-      id: `B3-${host}`,
-      block: 3,
-      home: slotFor(byGrp.get(host), 0, 1, host),
-      away,
+  const byNum = new Map<number, SimulatedMatch>();
+  for (const g of games) {
+    byNum.set(g.num, {
+      num: g.num,
+      home: resolveSide(g.home, g.num),
+      away: resolveSide(g.away, g.num),
     });
   }
 
-  const blocksComplete = matches.every((m) => m.home.team != null && m.away.team != null);
+  const blocksComplete = [...byNum.values()].every(
+    (m) => m.home.team != null && m.away.team != null,
+  );
 
-  return { matches, thirdsResolved: eligible, blocksComplete };
+  return { byNum, thirdsResolved: eligible, blocksComplete };
 }

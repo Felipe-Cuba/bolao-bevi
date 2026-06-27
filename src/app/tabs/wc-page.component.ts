@@ -164,6 +164,8 @@ export class WcPage {
 
   // Controla a modal do Bolão Bevi.
   readonly bolaoOpen = signal(false);
+  // Palpite a pré-selecionar ao abrir a modal (vindo do painel); null = primeiro.
+  readonly bolaoInitialId = signal<string | null>(null);
 
   // Controla a modal de criação de grupo + feedback do "copiar link".
   readonly grupoModalOpen = signal(false);
@@ -239,6 +241,13 @@ export class WcPage {
   }
 
   openBolao(): void {
+    this.bolaoInitialId.set(null);
+    this.bolaoOpen.set(true);
+  }
+
+  /** Abre a modal já posicionada num palpite (vindo do painel). */
+  openBolaoAt(id: string | null): void {
+    this.bolaoInitialId.set(id);
     this.bolaoOpen.set(true);
   }
 

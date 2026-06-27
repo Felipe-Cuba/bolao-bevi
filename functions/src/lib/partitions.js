@@ -12,8 +12,8 @@ export const PhaseStatus = {
 };
 
 // Estados terminais contam como "concluído"; ao vivo força "ongoing"; o resto é "pendente".
-const TERMINAL = new Set(['FINISHED', 'CANCELLED']);
-const LIVE = new Set(['IN_PLAY', 'PAUSED', 'LIVE']);
+export const TERMINAL = new Set(['FINISHED', 'CANCELLED']);
+export const LIVE = new Set(['IN_PLAY', 'PAUSED', 'LIVE']);
 
 // Mapa stage → id de partição (mata-mata: 1 parte por fase, matchday é null).
 const STAGE_PART = {

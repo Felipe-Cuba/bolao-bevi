@@ -1,0 +1,177 @@
+:host {
+  display: block;
+}
+
+/* Ângulo animável do "LED" que gira na borda dos cards do pódio. */
+@property --led-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes led-spin {
+  to {
+    --led-angle: 360deg;
+  }
+}
+
+/* Três cards lado a lado, alinhados pela base (degraus). Tamanho fixo por card. */
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.place {
+  /* tamanho FIXO — independe do nome da seleção */
+  position: relative;
+  width: 120px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.7rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  text-align: center;
+  opacity: 0.5;
+  transition: opacity 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+/* LED girando: conic-gradient animado, recortado para mostrar só a borda (1px). */
+.place::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--led-angle),
+    transparent 0turn,
+    var(--led-color) 0.12turn,
+    transparent 0.3turn,
+    transparent 1turn
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: led-spin 3s linear infinite;
+  pointer-events: none;
+}
+
+.place--set {
+  opacity: 1;
+}
+
+/* Degraus: 1º mais alto, 2º médio, 3º mais baixo. Cada lugar tem a cor do seu LED. */
+.place--1 {
+  width: 136px;
+  padding-top: 1.1rem;
+  padding-bottom: 1.1rem;
+  --led-color: var(--gold);
+}
+.place--2 {
+  padding-bottom: 0.85rem;
+  --led-color: var(--silver);
+}
+.place--3 {
+  --led-color: var(--bronze);
+}
+
+/* Defasagem para os LEDs não girarem em uníssono. */
+.place--1::before {
+  animation-delay: -1s;
+}
+.place--3::before {
+  animation-delay: -2s;
+}
+
+/* Cores de medalha quando o lugar está definido. */
+.place--1.place--set {
+  border-color: color-mix(in srgb, var(--gold) 65%, transparent);
+  background: color-mix(in srgb, var(--gold) 14%, var(--surface-2));
+}
+.place--2.place--set {
+  border-color: color-mix(in srgb, var(--silver) 55%, transparent);
+  background: color-mix(in srgb, var(--silver) 12%, var(--surface-2));
+}
+.place--3.place--set {
+  border-color: color-mix(in srgb, var(--bronze) 55%, transparent);
+  background: color-mix(in srgb, var(--bronze) 14%, var(--surface-2));
+}
+
+/* Medalha/troféu acompanha o tamanho do card. */
+.place__medal {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.place--1 .place__medal {
+  font-size: 2rem;
+}
+
+.place__crest {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+}
+.place--1 .place__crest {
+  width: 56px;
+  height: 56px;
+}
+
+.place__name {
+  width: 100%;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place__cap {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.place--1.place--set .place__cap {
+  color: var(--gold);
+}
+.place--2.place--set .place__cap {
+  color: var(--silver);
+}
+.place--3.place--set .place__cap {
+  color: var(--bronze);
+}
+
+@media (max-width: 640px) {
+  .podium {
+    gap: 0.5rem;
+  }
+  .place {
+    width: 96px;
+    padding: 0.55rem 0.4rem;
+  }
+  .place--1 {
+    width: 108px;
+  }
+  .place__crest {
+    width: 36px;
+    height: 36px;
+  }
+  .place--1 .place__crest {
+    width: 46px;
+    height: 46px;
+  }
+  .place__name {
+    font-size: 0.72rem;
+  }
+}

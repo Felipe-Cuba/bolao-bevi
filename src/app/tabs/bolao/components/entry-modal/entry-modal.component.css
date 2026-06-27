@@ -2,6 +2,19 @@
   display: block;
 }
 
+/* ── Skin do Bolão (tokens locais sobre o tema global) ──────────────────────── */
+.bolao {
+  --b-accent: #16c784;
+  --b-accent-2: #f5c518;
+  --b-card: #161b26;
+  --b-card-2: #1d2433;
+  --b-border: #283042;
+  --b-muted: #8b94a7;
+  --b-red: var(--live, #ff4d4f);
+  accent-color: var(--b-accent);
+}
+
+/* ── Overlay + diálogo ──────────────────────────────────────────────────────── */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -14,68 +27,69 @@
   z-index: 50;
 }
 
-/* Skin própria do Bolão */
-.bolao {
-  --b-accent: #16c784;
-  --b-accent-2: #f5c518;
-  --b-card: #161b26;
-  --b-border: #283042;
-  --b-muted: #8b94a7;
-}
-
 .dialog {
   background: var(--bg, #0f1220);
   border: 1px solid var(--b-border);
   border-radius: 16px;
-  width: min(700px, 100%);
+  width: min(720px, 100%);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: var(--shadow-card, 0 8px 24px -12px rgba(0, 0, 0, 0.55));
 }
 
-.dialog__head {
+/* ── Cabeçalho ──────────────────────────────────────────────────────────────── */
+.head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--b-border);
 }
 
-.dialog__title {
+.head__title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0;
   font-size: 1.2rem;
+  font-weight: 800;
 }
 
-.dialog__title-icon {
+.head__icon {
   color: var(--b-accent-2);
 }
 
 .icon-btn {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--b-muted);
   cursor: pointer;
   padding: 0.25rem;
+  border-radius: 0.5rem;
+  transition: color 0.12s ease, background 0.12s ease;
 }
 
 .icon-btn:hover {
   color: var(--text, #e8ecf4);
+  background: color-mix(in srgb, var(--b-border) 60%, transparent);
 }
 
-.entries {
-  padding: 0.9rem 1.25rem;
-  border-bottom: 1px solid var(--b-border);
+/* ── Seletor de palpites ────────────────────────────────────────────────────── */
+.picker {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--b-border);
 }
 
-.entries__list {
+.picker__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -85,56 +99,48 @@
   background: var(--b-card);
   border: 1px solid var(--b-border);
   color: var(--text, #e8ecf4);
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.8rem;
   border-radius: 999px;
   font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.chip:hover {
+  border-color: color-mix(in srgb, var(--b-accent) 60%, var(--b-border));
 }
 
 .chip--active {
+  background: color-mix(in srgb, var(--b-accent) 16%, var(--b-card));
   border-color: var(--b-accent);
   color: var(--b-accent);
   font-weight: 700;
 }
 
-.entries__new {
+.picker__new {
   display: flex;
   gap: 0.5rem;
 }
 
-.feedback {
-  margin: 0;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.8rem;
-  background: color-mix(in srgb, var(--b-accent) 16%, transparent);
-  color: var(--b-accent);
-  border: 1px solid color-mix(in srgb, var(--b-accent) 40%, transparent);
-}
-
-.feedback--err {
-  background: color-mix(in srgb, var(--live, #ff4d4f) 14%, transparent);
-  color: #ff8a8c;
-  border-color: color-mix(in srgb, var(--live, #ff4d4f) 40%, transparent);
-}
-
-.input {
+/* ── Campos / botões reutilizados ───────────────────────────────────────────── */
+.field {
   flex: 1;
+  min-width: 0;
   background: var(--b-card);
   border: 1px solid var(--b-border);
   color: var(--text, #e8ecf4);
-  border-radius: 0.5rem;
+  border-radius: 0.55rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.88rem;
 }
 
-.input:focus {
+.field:focus {
   outline: none;
   border-color: var(--b-accent);
 }
 
-/* Botões do bolão */
-.b-btn {
+.btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -146,41 +152,91 @@
   padding: 0.45rem 0.85rem;
   border-radius: 0.6rem;
   cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s ease, background 0.12s ease, opacity 0.12s ease;
 }
 
-.b-btn:hover:not(:disabled) {
+.btn:hover:not(:disabled) {
   border-color: var(--b-accent);
 }
 
-.b-btn:disabled {
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.b-btn--primary {
+.btn--primary {
   background: var(--b-accent);
   border-color: var(--b-accent);
   color: #04140d;
   font-weight: 800;
 }
 
-.b-btn--danger {
+.btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--b-accent) 88%, white);
+}
+
+.btn--danger {
   background: transparent;
-  border-color: color-mix(in srgb, var(--live, #ff4d4f) 60%, transparent);
+  border-color: color-mix(in srgb, var(--b-red) 55%, transparent);
   color: #ff8a8c;
 }
 
-/* Formulário */
-/* Abas por fase (Grupos | Oitavas | Quartas | …) */
+.btn--danger:hover:not(:disabled) {
+  border-color: var(--b-red);
+  background: color-mix(in srgb, var(--b-red) 12%, transparent);
+}
+
+/* ── Feedback inline ────────────────────────────────────────────────────────── */
+.feedback {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--b-accent) 16%, transparent);
+  color: var(--b-accent);
+  border: 1px solid color-mix(in srgb, var(--b-accent) 40%, transparent);
+}
+
+.feedback--err {
+  background: color-mix(in srgb, var(--b-red) 14%, transparent);
+  color: #ff8a8c;
+  border-color: color-mix(in srgb, var(--b-red) 40%, transparent);
+}
+
+/* ── Nome editável do palpite ativo ─────────────────────────────────────────── */
+.rename {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--b-border);
+}
+
+.rename__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--b-muted);
+}
+
+.rename__input {
+  flex: none;
+  width: 100%;
+  font-weight: 700;
+}
+
+/* ── Abas de fase ───────────────────────────────────────────────────────────── */
 .stages {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  padding: 0.4rem 1.25rem 0.6rem;
+  padding: 0.6rem 1.25rem;
   border-bottom: 1px solid var(--b-border);
 }
 
-.stage-tab {
+.stage {
   background: var(--b-card);
   border: 1px solid var(--b-border);
   color: var(--b-muted);
@@ -192,49 +248,51 @@
   transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
 
-.stage-tab:hover {
+.stage:hover {
   color: var(--text, #e8ecf4);
   border-color: var(--b-accent);
 }
 
-.stage-tab--active {
+.stage--active {
   background: color-mix(in srgb, var(--b-accent) 18%, var(--b-card));
   border-color: var(--b-accent);
   color: var(--b-accent);
 }
 
+/* ── Formulário de jogos ────────────────────────────────────────────────────── */
 .form {
-  overflow-y: auto;
-  padding: 0.5rem 1.25rem 1rem;
   flex: 1;
+  overflow-y: auto;
+  padding: 0.25rem 1.25rem 0.75rem;
 }
 
-.form__group {
-  margin-bottom: 0.5rem;
+.group {
+  margin-bottom: 0.25rem;
 }
 
-.form__sep {
+.group__sep {
   position: sticky;
   top: 0;
-  background: var(--bg, #0f1220);
+  z-index: 1;
   margin: 0;
-  padding: 0.6rem 0 0.45rem;
-  font-size: 0.82rem;
+  padding: 0.7rem 0 0.45rem;
+  background: var(--bg, #0f1220);
+  border-bottom: 1px solid var(--b-border);
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--b-accent);
-  border-bottom: 1px solid var(--b-border);
-  z-index: 1;
 }
 
 .row {
+  position: relative;
   display: grid;
-  /* coluna de resultado com largura fixa para não desalinhar linhas com/sem badge */
-  grid-template-columns: 1fr auto 1fr 5.25rem 4px;
+  /* stripe | time casa | palpite | time visitante | resultado (largura fixa) */
+  grid-template-columns: 4px 1fr auto 1fr 5.25rem;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.45rem 0;
+  padding: 0.5rem 0 0.5rem 0.6rem;
   border-bottom: 1px solid color-mix(in srgb, var(--b-border) 50%, transparent);
 }
 
@@ -247,26 +305,37 @@
   opacity: 0.5;
 }
 
-.row__locked {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--b-muted);
+/* Faixa lateral colorida conforme os pontos do palpite. */
+.row__stripe {
+  align-self: stretch;
+  border-radius: 999px;
+  background: transparent;
 }
 
-.row__team {
+.row__stripe[data-pts='3'] {
+  background: linear-gradient(180deg, #2bf0a5, var(--b-accent));
+}
+.row__stripe[data-pts='1'] {
+  background: linear-gradient(180deg, #ffe066, var(--b-accent-2));
+}
+.row__stripe[data-pts='0'] {
+  background: linear-gradient(180deg, #ff7a7c, var(--b-red));
+}
+
+/* ── Times ──────────────────────────────────────────────────────────────────── */
+.team {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
 }
 
-.row__team--home {
+.team--home {
   justify-content: flex-end;
   text-align: right;
 }
 
-.row__name {
+.team__name {
   font-size: 0.82rem;
   font-weight: 600;
   white-space: nowrap;
@@ -274,24 +343,29 @@
   text-overflow: ellipsis;
 }
 
-.row__crest {
+.team__crest {
   width: 24px;
   height: 24px;
   object-fit: contain;
   flex: none;
 }
 
-.row__crest--ph {
+.team__crest--ph {
   color: var(--b-muted);
 }
 
-.row__inputs {
+/* ── Inputs de placar ───────────────────────────────────────────────────────── */
+.guess {
   display: flex;
   align-items: center;
   gap: 0.3rem;
 }
 
-.score-input {
+.guess__x {
+  color: var(--b-muted);
+}
+
+.score {
   width: 2.7rem;
   text-align: center;
   background: var(--b-card);
@@ -302,43 +376,43 @@
   font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-.score-input:focus {
-  outline: none;
-  border-color: var(--b-accent);
-}
-
-.score-input:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.score-input::-webkit-outer-spin-button,
-.score-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* Firefox: remove o spinner do input numérico (setinhas de +/-). */
-.score-input {
+  /* Firefox: remove o spinner do input numérico. */
   -moz-appearance: textfield;
   appearance: textfield;
 }
 
-.row__x {
-  color: var(--b-muted);
+.score:focus {
+  outline: none;
+  border-color: var(--b-accent);
 }
 
-.row__result {
+.score:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.score::-webkit-outer-spin-button,
+.score::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ── Resultado (pontos ao vivo + placar real) ───────────────────────────────── */
+.result {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 0.4rem;
 }
 
-/* badge de pontos do palpite atual (ao vivo, sem salvar) */
-.row__pts {
+.result__locked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--b-muted);
+}
+
+.result__pts {
   font-size: 0.72rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -347,20 +421,20 @@
   line-height: 1.4;
 }
 
-.row__pts[data-pts='3'] {
+.result__pts[data-pts='3'] {
   color: #04140d;
-  background: var(--b-accent, #16c784);
+  background: var(--b-accent);
 }
-.row__pts[data-pts='1'] {
+.result__pts[data-pts='1'] {
   color: #2b2300;
-  background: var(--b-accent-2, #f5c518);
+  background: var(--b-accent-2);
 }
-.row__pts[data-pts='0'] {
+.result__pts[data-pts='0'] {
   color: #fff;
-  background: var(--live, #ff4d4f);
+  background: var(--b-red);
 }
 
-.row__real {
+.result__real {
   font-size: 0.72rem;
   color: var(--b-muted);
   font-variant-numeric: tabular-nums;
@@ -368,42 +442,71 @@
   text-align: right;
 }
 
-.row__real--pending {
+.result__real--pending {
   opacity: 0.4;
 }
 
-/* faixa de gradiente na lateral direita conforme os pontos */
-.row__stripe {
-  align-self: stretch;
-  border-radius: 999px;
-  background: transparent;
-}
-
-.row__stripe[data-pts='3'] {
-  background: linear-gradient(180deg, #2bf0a5, var(--b-accent, #16c784));
-}
-.row__stripe[data-pts='1'] {
-  background: linear-gradient(180deg, #ffe066, var(--b-accent-2, #f5c518));
-}
-.row__stripe[data-pts='0'] {
-  background: linear-gradient(180deg, #ff7a7c, var(--live, #ff4d4f));
-}
-
-.dialog__foot {
+/* ── Rodapé ─────────────────────────────────────────────────────────────────── */
+.foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.9rem 1.25rem;
+  padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--b-border);
 }
 
-.dialog__foot-right {
+.foot__right {
   display: flex;
   gap: 0.5rem;
 }
 
+/* ── Estado vazio ───────────────────────────────────────────────────────────── */
 .empty {
   padding: 2rem 1.25rem;
   color: var(--b-muted);
   text-align: center;
+}
+
+/* ── Responsivo: modal full-screen no mobile ────────────────────────────────── */
+@media (max-width: 640px) {
+  .backdrop {
+    padding: 0;
+  }
+
+  .dialog {
+    width: 100%;
+    max-height: 100vh;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+  }
+
+  .head,
+  .picker,
+  .rename,
+  .stages {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .form {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .foot {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .team__name {
+    font-size: 0.78rem;
+  }
+
+  .row {
+    grid-template-columns: 4px 1fr auto 1fr 4.5rem;
+    gap: 0.35rem;
+  }
 }
