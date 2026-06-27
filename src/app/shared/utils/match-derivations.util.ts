@@ -6,10 +6,10 @@ import { Match, MatchStatus, isLive, isUpcoming } from '@shared/models/match.mod
 export interface Highlights {
   /** Jogos ao vivo (se houver), no topo do destaque. */
   live: Match[];
-  /** Próximo jogo agendado (o primeiro a acontecer). */
-  next: Match | null;
-  /** Último jogo finalizado (o mais recente). */
-  last: Match | null;
+  /** Próximo(s) jogo(s) agendado(s) — todos os que começam no mesmo horário do primeiro. */
+  next: Match[];
+  /** Último(s) jogo(s) finalizado(s) — todos os que começaram no mesmo horário do mais recente. */
+  last: Match[];
   /** Finalizados (antigo→recente), particionados por fase para cabeçalhos sticky. */
   finishedByStage: MatchGroup[];
   /** Agendados (próximo→distante), particionados por fase para cabeçalhos sticky. */
@@ -33,8 +33,14 @@ export function buildHighlights(matches: Match[]): Highlights {
     .filter((m) => m.status === MatchStatus.FINISHED)
     .sort(byUtcAsc);
 
-  const next = upcoming[0] ?? null;
-  const last = finished.length ? finished[finished.length - 1] : null;
+  // Próximo(s): todos os agendados que começam no mesmo horário do primeiro da fila.
+  const next = upcoming.length
+    ? upcoming.filter((m) => m.utcDate === upcoming[0].utcDate)
+    : [];
+  // Último(s): todos os finalizados que começaram no mesmo horário do mais recente.
+  const last = finished.length
+    ? finished.filter((m) => m.utcDate === finished[finished.length - 1].utcDate)
+    : [];
 
   return {
     live,

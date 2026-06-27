@@ -224,6 +224,10 @@ export interface ScoredGuess {
   pts: 0 | 1 | 3;
   /** Grupo do jogo (GROUP_x) ou "KO" no mata-mata. */
   group: string;
+  /** Chave de fase/rodada ('GROUP_1'.. ou stage do mata-mata), p/ filtrar por fase. */
+  phase: string;
+  /** Chave de dia (AAAA-MM-DD, fuso de Brasília), p/ filtrar por dia. */
+  day: string;
 }
 
 /**
@@ -242,6 +246,8 @@ export function entryBreakdown(entry: BolaoEntry, matches: Match[]): ScoredGuess
       palpite,
       pts: scoreGuess(palpite, match),
       group: match.group ?? KO_KEY_GROUP,
+      phase: phaseKey(match),
+      day: dayKey(match.utcDate),
     });
   }
 

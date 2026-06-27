@@ -19,14 +19,14 @@ import { Scorer } from '@shared/models/match.model';
         </div>
       }
 
-      @if (highlights().next; as next) {
+      @for (next of highlights().next; track next.id) {
         <div class="spotlight__item">
           <h2 class="spotlight__label">Próximo jogo</h2>
           <app-match-card [match]="next" />
         </div>
       }
 
-      @if (highlights().last; as last) {
+      @for (last of highlights().last; track last.id) {
         <div class="spotlight__item">
           <h2 class="spotlight__label spotlight__label--done">Último jogo</h2>
           <app-match-card [match]="last" />

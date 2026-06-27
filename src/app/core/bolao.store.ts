@@ -12,7 +12,7 @@ import { GruposApi } from '@core/grupo.firestore';
  *  - em grupo: `entries` reflete a subcoleção do Firestore (reativa), e as escritas
  *    passam pela Cloud Function (não tocam o localStorage).
  *
- * A API pública (`entries`, `createEntry`, `setPalpites`, `removeEntry`, `importEntries`)
+ * A API pública (`entries`, `createEntry`, `saveEntry`, `removeEntry`, `importEntries`)
  * é a mesma; no modo grupo os métodos de escrita são assíncronos.
  */
 @Injectable({ providedIn: 'root' })
@@ -59,15 +59,19 @@ export class BolaoStore {
     return entry;
   }
 
-  async setPalpites(id: string, palpites: Palpite[]): Promise<void> {
+  /**
+   * Salva nome + palpites de um palpite existente (renomear + editar num passo só).
+   * No modo grupo o PUT valida nome único; colisão devolve 409, propagado ao chamador.
+   */
+  async saveEntry(id: string, name: string, palpites: Palpite[]): Promise<void> {
+    const clean = name.trim() || 'Sem nome';
     const gid = this.groupId();
     if (gid) {
-      const entry = this.entries().find((e) => e.id === id);
-      await this.grupos.saveEntry(gid, entry?.name ?? 'Sem nome', palpites, id);
+      await this.grupos.saveEntry(gid, clean, palpites, id);
       return;
     }
     this.localEntries.update((list: BolaoEntry[]) =>
-      list.map((e) => (e.id === id ? { ...e, palpites } : e)),
+      list.map((e) => (e.id === id ? { ...e, name: clean, palpites } : e)),
     );
   }
 

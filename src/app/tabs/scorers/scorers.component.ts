@@ -24,6 +24,20 @@ const PAGE_SIZE = 10;
             <div class="pod__name truncate" [title]="s.player.name">{{ s.player.name }}</div>
             <div class="pod__team truncate">{{ teamName(s.team) }}</div>
             <div class="pod__goals">{{ s.goals ?? 0 }}<span class="pod__goals-lab">gols</span></div>
+            <dl class="pod__stats">
+              <div class="pod__stat" title="Assistências">
+                <dt>A</dt>
+                <dd>{{ s.assists ?? 0 }}</dd>
+              </div>
+              <div class="pod__stat" title="Pênaltis">
+                <dt>P</dt>
+                <dd>{{ s.penalties ?? 0 }}</dd>
+              </div>
+              <div class="pod__stat" title="Jogos">
+                <dt>J</dt>
+                <dd>{{ s.playedMatches ?? 0 }}</dd>
+              </div>
+            </dl>
           </article>
         }
       </section>

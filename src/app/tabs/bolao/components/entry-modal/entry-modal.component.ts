@@ -60,6 +60,8 @@ export class BolaoModal {
   private readonly store = inject(BolaoStore);
 
   readonly matches = input.required<Match[]>();
+  /** Palpite a pré-selecionar ao abrir (ex.: o selecionado no painel). null = primeiro. */
+  readonly initialId = input<string | null>(null);
   readonly close = output<void>();
 
   readonly entries = this.store.entries;
@@ -67,6 +69,8 @@ export class BolaoModal {
   /** Id do palpite em edição. */
   readonly activeId = signal<string | null>(null);
   readonly newName = signal('');
+  /** Nome do palpite em edição (editável; salvo junto com os palpites). */
+  readonly editName = signal('');
 
   /** Fase ativa (aba). Default: a primeira fase presente (normalmente GROUP_STAGE). */
   readonly activeStage = signal<string | null>(null);
@@ -112,12 +116,14 @@ export class BolaoModal {
   });
 
   constructor() {
-    // Seleciona o primeiro palpite automaticamente quando existir e nada estiver ativo.
+    // Seleção inicial: o palpite pedido (`initialId`, ex.: o selecionado no painel) se
+    // ainda estiver na lista; senão o primeiro. Só age quando nada está ativo.
     effect(() => {
       const list = this.entries();
-      if (!this.activeId() && list.length) {
-        this.selectEntry(list[0].id);
-      }
+      if (this.activeId() || !list.length) return;
+      const wanted = this.initialId();
+      const target = (wanted && list.find((e) => e.id === wanted)) || list[0];
+      this.selectEntry(target.id);
     });
 
     // Garante uma fase ativa válida assim que as fases forem conhecidas.
@@ -142,6 +148,7 @@ export class BolaoModal {
   selectEntry(id: string): void {
     this.activeId.set(id);
     const entry = this.entries().find((e) => e.id === id);
+    this.editName.set(entry?.name ?? '');
     const map = new Map<number, DraftLine>();
     for (const p of entry?.palpites ?? []) {
       map.set(p.matchId, { home: p.home, away: p.away });
@@ -221,13 +228,18 @@ export class BolaoModal {
   async save(): Promise<void> {
     const id = this.activeId();
     if (!id) return;
+    const name = this.editName().trim();
+    if (!name) {
+      this.feedback.set({ kind: 'err', text: 'O nome do palpite não pode ficar vazio.' });
+      return;
+    }
     const palpites: Palpite[] = [];
     for (const [matchId, line] of this.draft()) {
       if (line.home == null || line.away == null) continue;
       palpites.push({ matchId, home: line.home, away: line.away });
     }
     try {
-      await this.store.setPalpites(id, palpites);
+      await this.store.saveEntry(id, name, palpites);
       this.close.emit();
     } catch (err) {
       this.feedback.set({ kind: 'err', text: (err as Error).message });

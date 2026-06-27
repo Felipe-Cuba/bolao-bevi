@@ -3,7 +3,7 @@
   <div class="empty">
     <svg lucideTrophy class="empty__icon" [size]="40"></svg>
     <p>Você ainda não tem palpites no Bolão Bevi.</p>
-    <button class="cta" (click)="openModal.emit()">
+    <button class="cta" (click)="openModal.emit(null)">
       <svg lucidePencil [size]="16"></svg> Criar palpite
     </button>
   </div>
@@ -22,7 +22,7 @@
       </div>
 
       <div class="bar__actions">
-        <button class="ghost" (click)="openModal.emit()" title="Editar palpites">
+        <button class="ghost" (click)="openModal.emit(selectedId())" title="Editar palpites">
           <svg lucidePencil [size]="16"></svg><span class="ghost__txt">Editar</span>
         </button>
         <button class="ghost" (click)="exportSelected()" title="Exportar JSON">
@@ -66,9 +66,13 @@
     </section>
     }
 
-    @if (nextRow(); as n) {
+    @if (nextRows().length) {
     <section class="next">
-      <h3 class="next__title"><svg lucideCalendarDays [size]="14"></svg> Próximo jogo</h3>
+      <h3 class="next__title">
+        <svg lucideCalendarDays [size]="14"></svg>
+        {{ nextRows().length > 1 ? 'Próximos jogos' : 'Próximo jogo' }}
+      </h3>
+      @for (n of nextRows(); track n.id) {
       <div class="lrow">
         <span class="lrow__team">
           <img class="lrow__crest" [src]="n.homeCrest" [alt]="n.homeTla" loading="lazy" />
@@ -85,6 +89,7 @@
         <span class="lrow__guess lrow__guess--empty">sem palpite</span>
         }
       </div>
+      }
     </section>
     }
 
@@ -161,11 +166,13 @@
       </h3>
       <div class="phases">
         @for (f of phaseCells(); track f.label) {
-        <div class="phase-cell" [class.phase-cell--empty]="f.value === 0" [style.--h]="f.heat"
+        <button type="button" class="phase-cell" [class.phase-cell--empty]="f.value === 0"
+          [class.phase-cell--clickable]="f.jogos > 0" [disabled]="f.jogos === 0" [style.--h]="f.heat"
+          (click)="openFase(f.key, f.label)"
           [title]="f.label + ': ' + f.value + ' pts · ' + f.jogos + ' jogo(s)'">
           <span class="phase-cell__lab">{{ f.label }}</span>
           <span class="phase-cell__val">{{ f.value }}</span>
-        </div>
+        </button>
         }
       </div>
     </section>
@@ -179,14 +186,15 @@
       @if (dayColumns().length) {
       <div class="days">
         @for (d of dayColumns(); track d.label) {
-        <div class="day" [class.day--best]="d.isBest" [class.day--worst]="d.isWorst"
+        <button type="button" class="day day--clickable" [class.day--best]="d.isBest"
+          [class.day--worst]="d.isWorst" (click)="openDia(d.date, d.label)"
           [title]="d.points + ' pts · ' + d.jogos + ' jogo(s)'">
           <span class="day__pts">{{ d.points }}</span>
           <div class="day__track">
             <div class="day__bar" [style.height.%]="d.height * 100"></div>
           </div>
           <span class="day__lab">{{ d.label }}</span>
-        </div>
+        </button>
         }
       </div>
       @if (bestDayLabel(); as best) {

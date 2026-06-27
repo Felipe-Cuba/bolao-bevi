@@ -107,6 +107,9 @@
       <button class="tab tab--icon" [class.tab--active]="filters().tab === 'standings'" (click)="setTab('standings')">
         <svg lucideTable [size]="15"></svg> Classificação
       </button>
+      <button class="tab tab--icon" [class.tab--active]="filters().tab === 'bracket'" (click)="setTab('bracket')">
+        <svg lucideGitFork [size]="15"></svg> Chaveamento
+      </button>
       <button class="tab tab--icon" [class.tab--active]="filters().tab === 'scorers'" (click)="setTab('scorers')">
         <svg lucideTarget [size]="15"></svg> Artilheiros
       </button>
@@ -171,6 +174,30 @@
           <app-standings-table [standings]="standings()" />
         }
       }
+      @case ('bracket') {
+        @if (standingsQuery.isPending() || knockoutQuery.isPending()) {
+          <div class="skel-grid">
+            @for (c of [1, 2, 3, 4]; track c) {
+              <div class="skel-card surface-card">
+                <div class="skeleton skel-line skel-line--title"></div>
+                @for (r of [1, 2, 3, 4]; track r) {
+                  <div class="skel-row">
+                    <div class="skeleton skel-dot"></div>
+                    <div class="skeleton skel-line"></div>
+                    <div class="skeleton skel-num"></div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @else if (standingsQuery.isError() && !standings().length) {
+          <div class="state state--error">
+            <p>Não foi possível carregar o chaveamento.</p>
+          </div>
+        } @else {
+          <app-bracket [bracket]="bracketTree()" />
+        }
+      }
       @case ('scorers') {
         @if (scorersQuery.isPending()) {
           <div class="skel-podium">
@@ -200,13 +227,13 @@
         }
       }
       @case ('bolao') {
-        <app-bolao-panel [matches]="matches()" (openModal)="openBolao()" />
+        <app-bolao-panel [matches]="matches()" (openModal)="openBolaoAt($event)" />
       }
     }
   }
 
   @if (bolaoOpen()) {
-    <app-bolao-modal [matches]="matches()" (close)="closeBolao()" />
+    <app-bolao-modal [matches]="matches()" [initialId]="bolaoInitialId()" (close)="closeBolao()" />
   }
 
   @if (grupoModalOpen()) {

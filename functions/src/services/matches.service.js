@@ -2,6 +2,7 @@ import { inject } from '../core/injector.js';
 import { MatchesRepository } from '../repositories/matches.repository.js';
 import { API_URL, MIN_INTERVAL_MS } from '../config.js';
 import { partition, assemble, PhaseStatus } from '../lib/partitions.js';
+import { reconcileMatches } from '../lib/reconcile.js';
 
 /**
  * Serviço das partidas da Copa: proxy + gatekeeper da API football-data.org com cache
@@ -88,10 +89,34 @@ export class MatchesService {
 
     const data = await apiRes.json();
     const updatedAtMs = Date.now();
-    const { meta, parts } = partition(data);
+
+    // Guard anti-regressão: a API às vezes rebaixa um jogo já encerrado (FINISHED→TIMED),
+    // o que sobrescreveria o cache e estragaria a pontuação. Reconcilia contra o cache atual
+    // antes de particionar/gravar, congelando jogos que já estavam em estado terminal.
+    const reconciled = {
+      ...data,
+      matches: reconcileMatches(await this.readCachedMatches(), data.matches),
+    };
+    const { meta, parts } = partition(reconciled);
 
     await this.repo.writePartitions(meta, parts, updatedAtMs);
-    await this.repo.writeCurrent(data, updatedAtMs); // legado (remover ao fim da migração)
+    await this.repo.writeCurrent(reconciled, updatedAtMs); // legado (remover ao fim da migração)
+  }
+
+  /**
+   * Lê os jogos atualmente em cache (partes particionadas, com fallback ao doc legado).
+   * Retorna [] se ainda não há nada — aí a reconciliação aceita o payload novo inteiro.
+   */
+  async readCachedMatches() {
+    try {
+      const { meta, parts } = await this.repo.readAllParts();
+      if (meta) return assemble(meta, parts).matches ?? [];
+      const cached = await this.repo.readCurrent();
+      return cached?.data?.matches ?? [];
+    } catch (err) {
+      console.warn('[matches] falha ao ler cache para reconciliação; usando payload novo:', err);
+      return [];
+    }
   }
 }
 

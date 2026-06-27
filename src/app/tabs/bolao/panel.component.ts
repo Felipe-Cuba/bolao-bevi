@@ -69,6 +69,8 @@ interface GroupCell {
 
 /** Coluna do mini-gráfico de pontos por dia. */
 interface DayColumn {
+  /** Chave do dia (AAAA-MM-DD), p/ filtrar os jogos desse dia. */
+  date: string;
   /** Rótulo curto (dd/mm) para o eixo. */
   label: string;
   points: number;
@@ -82,6 +84,8 @@ interface DayColumn {
 
 /** Célula de pontos por fase/rodada. */
 interface PhaseCell {
+  /** Chave da fase ('GROUP_1'.. ou stage do mata-mata), p/ filtrar os jogos. */
+  key: string;
   label: string;
   value: number;
   jogos: number;
@@ -141,8 +145,11 @@ export class BolaoPanel {
   private readonly store = inject(BolaoStore);
 
   readonly matches = input.required<Match[]>();
-  /** Pede para a página abrir a modal de palpites (estado vazio / botão editar). */
-  readonly openModal = output<void>();
+  /**
+   * Pede para a página abrir a modal de palpites. Emite o id a pré-selecionar (o palpite
+   * em foco no painel) ou null no estado vazio, para a modal abrir no item certo.
+   */
+  readonly openModal = output<string | null>();
 
   readonly entries = this.store.entries;
   readonly selectedId = signal<string | null>(null);
@@ -202,15 +209,18 @@ export class BolaoPanel {
     const t = this.tally();
     const dias = t?.porDia ?? [];
     const max = Math.max(0, ...dias.map((d) => d.points));
+    const min = dias.length ? Math.min(...dias.map((d) => d.points)) : 0;
     // Só realça quando há variação real entre os dias (mais de um dia pontuado).
-    const distinguish = dias.length > 1 && t?.melhorDia?.points !== t?.piorDia?.points;
+    // Realce por VALOR (não por data): dias empatados no máx/mín recebem a mesma cor.
+    const distinguish = dias.length > 1 && max !== min;
     return dias.map((d) => ({
+      date: d.date,
       label: this.shortDay(d.date),
       points: d.points,
       jogos: d.jogos,
       height: max > 0 ? d.points / max : 0,
-      isBest: distinguish && d.date === t?.melhorDia?.date,
-      isWorst: distinguish && d.date === t?.piorDia?.date,
+      isBest: distinguish && d.points === max,
+      isWorst: distinguish && d.points === min,
     }));
   });
 
@@ -219,6 +229,7 @@ export class BolaoPanel {
     const fases = this.tally()?.porFase ?? [];
     const max = Math.max(0, ...fases.map((f) => f.points));
     return fases.map((f) => ({
+      key: f.key,
       label: f.label,
       value: f.points,
       jogos: f.jogos,
@@ -267,6 +278,20 @@ export class BolaoPanel {
     this.detalhe.set({ title, items });
   }
 
+  /** Abre a modal de uma fase/rodada: todos os palpites de jogos já pontuados dela. */
+  openFase(key: string, label: string): void {
+    const items = this.breakdown().filter((g) => g.phase === key);
+    if (!items.length) return;
+    this.detalhe.set({ title: label, items });
+  }
+
+  /** Abre a modal de um dia: todos os palpites de jogos já pontuados naquele dia. */
+  openDia(date: string, label: string): void {
+    const items = this.breakdown().filter((g) => g.day === date);
+    if (!items.length) return;
+    this.detalhe.set({ title: `Dia ${label}`, items });
+  }
+
   closeDetalhe(): void {
     this.detalhe.set(null);
   }
@@ -299,8 +324,8 @@ export class BolaoPanel {
       });
   });
 
-  /** Próximo jogo a acontecer (agendado, ainda não começou), com palpite resolvido. */
-  readonly nextRow = computed<NextRow | null>(() => {
+  /** Próximo(s) jogo(s) a acontecer: todos os agendados no mesmo horário, com palpite. */
+  readonly nextRows = computed<NextRow[]>(() => {
     const now = Date.now();
     const upcoming = this.matches()
       .filter(
@@ -311,27 +336,32 @@ export class BolaoPanel {
       )
       .sort((a, b) => a.utcDate.localeCompare(b.utcDate));
 
-    const m = upcoming[0];
-    if (!m) return null;
+    if (!upcoming.length) return [];
 
+    // Todos os jogos que começam no mesmo horário do primeiro da fila.
+    const firstUtc = upcoming[0].utcDate;
     const entry = this.selected();
-    const palpite = entry?.palpites.find((p) => p.matchId === m.id) ?? null;
 
-    return {
-      id: m.id,
-      homeTla: this.teamTla(m.homeTeam),
-      awayTla: this.teamTla(m.awayTeam),
-      homeCrest: teamCrest(m.homeTeam),
-      awayCrest: teamCrest(m.awayTeam),
-      palpite,
-      when: new Date(m.utcDate).toLocaleString('pt-BR', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
+    return upcoming
+      .filter((m) => m.utcDate === firstUtc)
+      .map((m) => {
+        const palpite = entry?.palpites.find((p) => p.matchId === m.id) ?? null;
+        return {
+          id: m.id,
+          homeTla: this.teamTla(m.homeTeam),
+          awayTla: this.teamTla(m.awayTeam),
+          homeCrest: teamCrest(m.homeTeam),
+          awayCrest: teamCrest(m.awayTeam),
+          palpite,
+          when: new Date(m.utcDate).toLocaleString('pt-BR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        };
+      });
   });
 
   private teamTla(team: Match['homeTeam']): string {
