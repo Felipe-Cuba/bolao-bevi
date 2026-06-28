@@ -1,61 +1,70 @@
-## 16-Avos de final
+# Mata-mata da Copa do Mundo 2026 — Confrontos e Chaveamento
 
-| Partida | Data   | Time 1 | x | Time 2  |
-|---------|--------|--------|---|---------|
-| 73      | 28 JUN | 2ºA    | x | 2ºB     |
-| 74      | 29 JUN | 1ºE    | x | 3ºABCDF |
-| 75      | 29 JUN | 1ºF    | x | 2ºC     |
-| 76      | 29 JUN | 1ºC    | x | 2ºF     |
-| 77      | 29 JUN | 1ºI    | x | 3ºCDFGH |
-| 78      | 29 JUN | 2ºE    | x | 2ºI     |
-| 79      | 30 JUN | 1ºA    | x | 3ºCEFHI |
-| 80      | 1 JUL  | 1ºL    | x | 3ºEHIJK |
-| 81      | 1 JUL  | 1ºD    | x | 3ºBEFIJ |
-| 82      | 1 JUL  | 1ºG    | x | 3ºAEHIJ |
-| 83      | 1 JUL  | 2ºK    | x | 2ºL     |
-| 84      | 1 JUL  | 1ºH    | x | 2ºJ     |
-| 85      | 1 JUL  | 1ºB    | x | 3ºEFGIJ |
-| 86      | 1 JUL  | 1ºJ    | x | 2ºH     |
-| 87      | 1 JUL  | 1ºK    | x | 3ºDEIJL |
-| 88      | 1 JUL  | 2ºD    | x | 2ºG     |
+Documento de referência sobre a fase eliminatória (segunda fase em diante) da
+Copa do Mundo de 2026, com horários, jogos e a estrutura completa do chaveamento
+até a final. Horários no fuso de Brasília (BRT).
 
-## Oitavas de final
+## Segunda fase (32 → 16)
 
-| Partida | Data   | Time 1 | x | Time 2 |
-|---------|--------|--------|---|--------|
-| 89      | 4 JUL  | V 74   | x | V 77   |
-| 90      | 4 JUL  | V 73   | x | V 75   |
-| 91      | 5 JUL  | V 76   | x | V 78   |
-| 92      | 5 JUL  | V 79   | x | V 80   |
-| 93      | 6 JUL  | V 83   | x | V 84   |
-| 94      | 6 JUL  | V 81   | x | V 82   |
-| 95      | 7 JUL  | V 86   | x | V 88   |
-| 96      | 7 JUL  | V 85   | x | V 87   |
+16 jogos, numerados de 1 a 16 — essa numeração é usada nas seções de oitavas
+abaixo para indicar de onde vem cada vencedor.
 
-## Quartas de final
+| # | Confronto | Data | Horário |
+|---|---|---|---|
+| 1 | Alemanha x Paraguai | seg, 29/06 | 17h30 |
+| 2 | França x Suécia | ter, 30/06 | 18h |
+| 3 | África do Sul x Canadá | dom, 28/06 | 16h |
+| 4 | Holanda x Marrocos | seg, 29/06 | 22h |
+| 5 | Portugal x Croácia | qui, 02/07 | 20h |
+| 6 | Espanha x Áustria | qui, 02/07 | 16h |
+| 7 | Estados Unidos x Bósnia | qua, 01/07 | 21h |
+| 8 | Bélgica x Senegal | qua, 01/07 | 17h |
+| 9 | Brasil x Japão | seg, 29/06 | 14h |
+| 10 | Costa do Marfim x Noruega | ter, 30/06 | 14h |
+| 11 | México x Equador | ter, 30/06 | 22h |
+| 12 | Inglaterra x RD Congo | qua, 01/07 | 13h |
+| 13 | Argentina x Cabo Verde | sex, 03/07 | 19h |
+| 14 | Austrália x Egito | sex, 03/07 | 15h |
+| 15 | Suíça x Argélia | sex, 03/07 | 00h |
+| 16 | Colômbia x Gana | sex, 03/07 | 22h30 |
 
-| Partida | Data   | Time 1 | x | Time 2 |
-|---------|--------|--------|---|--------|
-| 97      | 9 JUL  | V 89   | x | V 90   |
-| 98      | 10 JUL | V 93   | x | V 94   |
-| 99      | 11 JUL | V 91   | x | V 92   |
-| 100     | 11 JUL | V 95   | x | V 96   |
+## Estrutura do chaveamento
 
-## Semifinais
+A chave é dividida em dois lados (metades) que só se encontram na final.
 
-| Partida | Data   | Time 1 | x | Time 2 |
-|---------|--------|--------|---|--------|
-| 101     | 14 JUL | V 97   | x | V 98   |
-| 102     | 15 JUL | V 99   | x | V 100  |
+### Lado A (jogos 1–4 da segunda fase)
 
-## Disputa de 3º lugar
+- **Oitavas 1** — 04/07 às 18h — Vencedor(1) Alemanha/Paraguai x Vencedor(2) França/Suécia
+- **Oitavas 2** — 04/07 às 14h — Vencedor(3) África do Sul/Canadá x Vencedor(4) Holanda/Marrocos
+- **Oitavas 3** — 06/07 às 16h — Vencedor(5) Portugal/Croácia x Vencedor(6) Espanha/Áustria
+- **Oitavas 4** — 06/07 às 21h — Vencedor(7) Estados Unidos/Bósnia x Vencedor(8) Bélgica/Senegal
+- **Quartas 1** — 09/07 às 17h — Oitavas 1 x Oitavas 2
+- **Quartas 2** — 10/07 às 16h — Oitavas 3 x Oitavas 4
+- **Semifinal 1** — 14/07 às 16h — Quartas 1 x Quartas 2
 
-| Partida | Data   | Time 1 | x | Time 2 |
-|---------|--------|--------|---|--------|
-| 103     | 18 JUL | P 101  | x | P 102  |
+### Lado B (jogos 9–16 da segunda fase)
 
-## Final
+- **Oitavas 5** — 05/07 às 17h — Vencedor(9) Brasil/Japão x Vencedor(10) Costa do Marfim/Noruega
+- **Oitavas 6** — 05/07 às 21h — Vencedor(11) México/Equador x Vencedor(12) Inglaterra/RD Congo
+- **Oitavas 7** — 07/07 às 13h — Vencedor(13) Argentina/Cabo Verde x Vencedor(14) Austrália/Egito
+- **Oitavas 8** — 07/07 às 17h — Vencedor(15) Suíça/Argélia x Vencedor(16) Colômbia/Gana
+- **Quartas 3** — 11/07 às 18h — Oitavas 5 x Oitavas 6
+- **Quartas 4** — 11/07 às 22h — Oitavas 7 x Oitavas 8
+- **Semifinal 2** — 15/07 às 16h — Quartas 3 x Quartas 4
 
-| Partida | Data   | Time 1 | x | Time 2 |
-|---------|--------|--------|---|--------|
-| 104     | 19 JUL | V 101  | x | V 102  |
+### Fases finais
+
+- **Disputa de 3º lugar** — 18/07 às 18h — Perdedor da Semifinal 1 x Perdedor da Semifinal 2
+- **Final** — 19/07 às 16h — Semifinal 1 x Semifinal 2
+
+## Notas para implementação
+
+- Cada jogo de mata-mata depende do **resultado** do(s) jogo(s) anterior(es) na
+  mesma posição da chave — não há "group/seed" fixo como na fase de grupos.
+- Útil modelar como uma árvore/lista de rodadas onde cada partida tem
+  `homeSource` e `awaySource` apontando para o jogo (ou par de jogos) anterior,
+  em vez de times fixos, já que os confrontos da segunda fase em diante só são
+  conhecidos depois do resultado anterior.
+- A numeração 1–16 da "Segunda fase" é apenas posicional/de referência neste
+  documento (não é um `id` oficial da API) — serve para rastrear qual vencedor
+  alimenta qual jogo das oitavas.

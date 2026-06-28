@@ -63,8 +63,7 @@ __screenshots__/
 Thumbs.db
 
 
-wc-response-complete.json
-wc-teams-data.json
-wc-scorers-response.json
+/local-data
+/public/*.json
 
 *.log

@@ -336,7 +336,7 @@
    espaço dessas duas (esquerda = faixa, direita = badge). */
 .match {
   position: relative;
-  padding: 0.4rem 5.9rem 0.4rem 0.9rem;
+  padding: 0.5rem;
   border-bottom: 1px solid color-mix(in srgb, var(--b-border) 50%, transparent);
 }
 

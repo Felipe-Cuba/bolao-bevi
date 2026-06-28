@@ -195,7 +195,7 @@
             <p>Não foi possível carregar o chaveamento.</p>
           </div>
         } @else {
-          <app-bracket [bracket]="bracketTree()" />
+          <app-bracket [bracket]="bracketTree()" [matches]="bolaoMatches()" />
         }
       }
       @case ('scorers') {

@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { of, switchMap } from 'rxjs';
 import { storageSignal } from 'ngx-oneforall/signals/storage-signal';
@@ -42,6 +42,34 @@ export class BolaoStore {
 
   /** Verdadeiro quando operando dentro de um grupo. */
   readonly inGroup = computed(() => this.groupId() !== null);
+
+  // ── Seleção de palpite ativa (compartilhada entre painel e chaveamento) ─────
+
+  /** Id do palpite atualmente selecionado na UI (painel/chaveamento). */
+  readonly selectedEntryId = signal<string | null>(null);
+
+  /** Palpite selecionado (ou null), derivado de `selectedEntryId` sobre `entries`. */
+  readonly selectedEntry = computed<BolaoEntry | null>(
+    () => this.entries().find((e) => e.id === this.selectedEntryId()) ?? null,
+  );
+
+  /** Seleciona um palpite (compartilhado entre as telas). */
+  selectEntry(id: string | null): void {
+    this.selectedEntryId.set(id);
+  }
+
+  constructor() {
+    // Mantém a seleção sempre válida: se o id atual sumiu da lista (ou nunca foi definido),
+    // cai no primeiro palpite. Centralizado aqui para painel e chaveamento ficarem em sincronia
+    // independentemente de qual tela abriu primeiro.
+    effect(() => {
+      const list = this.entries();
+      const id = this.selectedEntryId();
+      if (!list.some((e) => e.id === id)) {
+        this.selectedEntryId.set(list[0]?.id ?? null);
+      }
+    });
+  }
 
   // ── Escritas ──────────────────────────────────────────────────────────────
   // No modo local mutam o localStorage (síncrono). No modo grupo chamam a Function;

@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   input,
   output,
@@ -13,6 +12,8 @@ import {
   LucideChevronDown,
   LucideCrosshair,
   LucideGrid3x3,
+  LucideGoal,
+  LucideCircleQuestionMark,
   LucideLayers,
   LucideMedal,
   LucidePencil,
@@ -35,6 +36,8 @@ import {
 } from '@shared/utils/bolao-scoring.util';
 import { Palpite } from '@shared/models/bolao.model';
 import { BolaoDetalheModal } from './components/detail-modal/detail-modal.component';
+import { HelpModal, HelpBlock } from '@shared/components/help-modal/help-modal.component';
+import { BOLAO_HELP } from './bolao-help.content';
 import { ShortNamePtPipe } from '@shared/pipes/match-labels.pipes';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
@@ -124,9 +127,12 @@ interface NextRow {
     LucideMedal,
     LucideChevronDown,
     LucideGrid3x3,
+    LucideGoal,
     LucideCalendarDays,
     LucideLayers,
+    LucideCircleQuestionMark,
     BolaoDetalheModal,
+    HelpModal,
     ShortNamePtPipe
 ],
   templateUrl: './panel.component.html',
@@ -143,21 +149,13 @@ export class BolaoPanel {
   readonly openModal = output<string | null>();
 
   readonly entries = this.store.entries;
-  readonly selectedId = signal<string | null>(null);
+  /** Seleção compartilhada com o chaveamento (vive no store; auto-seleção feita lá). */
+  readonly selectedId = this.store.selectedEntryId;
 
-  constructor() {
-    effect(() => {
-      const list = this.entries();
-      const id = this.selectedId();
-      if (!list.some((e) => e.id === id)) {
-        this.selectedId.set(list[0]?.id ?? null);
-      }
-    });
-  }
-
-  readonly selected = computed(
-    () => this.entries().find((e) => e.id === this.selectedId()) ?? null,
-  );
+  /** Modal "Como funciona?" (sistema de pontuação). */
+  readonly helpOpen = signal(false);
+  readonly helpBlocks: HelpBlock[] = BOLAO_HELP;
+  readonly selected = this.store.selectedEntry;
 
   readonly tally = computed(() => {
     const entry = this.selected();
@@ -365,7 +363,7 @@ export class BolaoPanel {
   }
 
   select(id: string): void {
-    this.selectedId.set(id);
+    this.store.selectEntry(id);
   }
 
 }

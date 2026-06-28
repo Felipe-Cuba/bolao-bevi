@@ -1,14 +1,16 @@
 // Monta a ÁRVORE visual do mata-mata (16-avos → final → campeã), estilo "caminho da seleção".
 // Derivação PURA — não faz request. Combina duas fontes:
-//   • 16-avos (LAST_32): confrontos PROJETADOS da classificação (buildSimulatedBracket), ou os
-//     jogos REAIS da API quando já existirem com times definidos.
-//   • Oitavas → final: os jogos REAIS da API (placeholders "A definir" até serem jogados).
+//   • 16-avos (LAST_32): os confrontos REAIS da coleção `wcLast32` (times já definidos);
+//     o placar/vencedor vem do jogo real da API casado por `matchId`.
+//   • Oitavas → final: os jogos REAIS da API, casados POR TIMES (vencedores das fases
+//     anteriores), não por ordem de id. "A definir" enquanto não houver vencedor/jogo.
 //
 // A topologia (quem alimenta quem) é DERIVADA do schema declarativo (bracket-schema): cada
 // jogo de oitavas+ referencia os jogos anteriores via `winnerOf`. Um DFS a partir da final
 // (raiz) atribui lado (esquerda/direita) e ordem vertical a cada nó — sem tabelas mágicas.
 
 import {
+  Last32Confronto,
   Match,
   MatchPart,
   MatchStage,
@@ -17,8 +19,6 @@ import {
   Team,
   scoreBreakdown,
 } from '@shared/models/match.model';
-import { GroupStanding } from '@shared/utils/match-derivations.util';
-import { buildSimulatedBracket, SimulatedMatch } from '@shared/utils/bracket-simulation.util';
 import { isPlaceholderTeam, teamNamePt } from '@shared/utils/teams.util';
 import { schemaByNum, SchemaMatch } from '@shared/utils/bracket-schema.util';
 
@@ -43,6 +43,8 @@ export interface TreeNode {
   id: string;
   /** Número oficial do jogo (73..104). */
   num: number;
+  /** Id REAL do jogo na API (chave do palpite), ou null se ainda não definido. */
+  matchId: number | null;
   round: BracketRound;
   side: BracketSide;
   slotIndex: number;
@@ -90,8 +92,8 @@ const THIRD_PLACE_NUM = 103;
 
 /** Os dois jogos que alimentam um jogo (via `winnerOf` de seus lados), na ordem home, away. */
 function feedersOf(game: SchemaMatch): [number, number] | null {
-  const h = game.home.kind === 'winnerOf' ? game.home.match : null;
-  const a = game.away.kind === 'winnerOf' ? game.away.match : null;
+  const h = game.home?.kind === 'winnerOf' ? game.home.match : null;
+  const a = game.away?.kind === 'winnerOf' ? game.away.match : null;
   return h != null && a != null ? [h, a] : null;
 }
 
@@ -185,7 +187,7 @@ function apiNode(
   const id = `${round}-${side}-${slotIndex}`;
   if (!match) {
     return {
-      id, num, round, side, slotIndex,
+      id, num, matchId: null, round, side, slotIndex,
       home: emptySlot(),
       away: emptySlot(),
       origin: 'api',
@@ -196,7 +198,7 @@ function apiNode(
   const finished = isFinished(match.status);
   const score: Score = match.score;
   return {
-    id, num, round, side, slotIndex,
+    id, num, matchId: match.id, round, side, slotIndex,
     home: apiSlot(match.homeTeam, score.fullTime.home, finished, score.winner === 'HOME_TEAM'),
     away: apiSlot(match.awayTeam, score.fullTime.away, finished, score.winner === 'AWAY_TEAM'),
     origin: 'api',
@@ -205,26 +207,27 @@ function apiNode(
   };
 }
 
-/** Converte um confronto projetado dos 16-avos (SimulatedMatch) em nó da árvore. */
-function projectedNode(
-  m: SimulatedMatch,
+/** Converte um confronto de 16-avos da coleção `wcLast32` em nó da árvore (sem placar). */
+function confrontoNode(
+  c: Last32Confronto,
   side: BracketSide,
   slotIndex: number,
 ): TreeNode {
-  const toSlot = (s: SimulatedMatch['home']): TreeSlot => ({
-    team: s.team,
-    label: s.team ? teamNamePt(s.team) : s.label,
+  const toSlot = (team: Team): TreeSlot => ({
+    team,
+    label: teamNamePt(team),
     score: null,
     winner: false,
   });
   return {
     id: `LAST_32-${side}-${slotIndex}`,
-    num: m.num,
+    num: c.num,
+    matchId: c.matchId,
     round: 'LAST_32',
     side,
     slotIndex,
-    home: toSlot(m.home),
-    away: toSlot(m.away),
+    home: toSlot(c.homeTeam),
+    away: toSlot(c.awayTeam),
     origin: 'projected',
     breakdown: null,
     hasMatch: false,
@@ -236,19 +239,56 @@ function hasRealTeams(match: Match | undefined): match is Match {
   return !!match && !isPlaceholderTeam(match.homeTeam) && !isPlaceholderTeam(match.awayTeam);
 }
 
+/** Time vencedor de um nó já resolvido (placar/winner da API), ou null se indefinido. */
+function nodeWinner(node: TreeNode): Team | null {
+  if (node.home.winner && node.home.team) return node.home.team;
+  if (node.away.winner && node.away.team) return node.away.team;
+  return null;
+}
+
+/** Compara dois times por tla (fallback id). Robusto a placeholders (null). */
+function sameTeam(a: Team | null | undefined, b: Team | null | undefined): boolean {
+  if (!a || !b) return false;
+  if (a.tla && b.tla) return a.tla === b.tla;
+  return a.id != null && a.id === b.id;
+}
+
+/** O jogo real da API casa com o par de times esperado (em qualquer ordem)? */
+function matchHasTeams(match: Match, t1: Team, t2: Team): boolean {
+  return (
+    (sameTeam(match.homeTeam, t1) && sameTeam(match.awayTeam, t2)) ||
+    (sameTeam(match.homeTeam, t2) && sameTeam(match.awayTeam, t1))
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Entrada principal
 // ---------------------------------------------------------------------------
 
-/** Monta a árvore completa do mata-mata a partir da classificação + jogos reais de mata-mata. */
+/** Ordem de resolução das fases (16-avos → final → 3º lugar). */
+const RESOLVE_ROUNDS: BracketRound[] = [
+  'LAST_32',
+  'LAST_16',
+  'QUARTER_FINALS',
+  'SEMI_FINALS',
+  'FINAL',
+  'THIRD_PLACE',
+];
+
+/**
+ * Monta a árvore completa do mata-mata a partir dos confrontos REAIS dos 16-avos (coleção
+ * `wcLast32`) + os jogos reais de mata-mata da API (oitavas → final).
+ *
+ * Resolução por fase: os 16-avos vêm dos confrontos (com placar do jogo real casado por
+ * `matchId`, quando houver). Cada fase seguinte é casada POR TIMES — descobrimos os dois
+ * vencedores que deveriam estar no jogo (via topologia do schema) e achamos o `Match` real
+ * cujos times batem, em qualquer ordem. Assim a montagem independe da ordem de id da API.
+ */
 export function buildBracketTree(
-  standings: GroupStanding[],
+  last32: Last32Confronto[],
   knockout: MatchPart[],
 ): BracketTree {
-  const sim = buildSimulatedBracket(standings);
-
-  // Jogos reais agrupados por fase e ordenados POR id — dentro de cada fase os ids da API são
-  // sequenciais e seguem o nº do jogo da FIFA. Mapeamos num→Match assumindo essa correspondência.
+  // Jogos reais agrupados por fase (sem depender de ordem de id).
   const allMatches = knockout.flatMap((p) => p.matches);
   const byStage = new Map<string, Match[]>();
   for (const m of allMatches) {
@@ -256,75 +296,108 @@ export function buildBracketTree(
     if (arr) arr.push(m);
     else byStage.set(String(m.stage), [m]);
   }
-  for (const arr of byStage.values()) arr.sort((a, b) => a.id - b.id);
 
-  /** Jogo real da API correspondente a um num, via posição na fase ordenada por id. */
-  const apiMatchFor = (num: number): Match | undefined => {
-    const game = schemaByNum.get(num);
-    if (!game) return undefined;
-    const stage = game.round as unknown as MatchStage;
-    const list = byStage.get(stage) ?? [];
-    // O índice do num dentro da sua fase (na ordem oficial dos nums) casa com a ordem por id.
-    const phaseNums = [...schemaByNum.values()]
-      .filter((g) => (g.round as unknown as MatchStage) === stage)
-      .map((g) => g.num)
-      .sort((a, b) => a - b);
-    return list[phaseNums.indexOf(num)];
+  const confrontoByNum = new Map<number, Last32Confronto>(last32.map((c) => [c.num, c]));
+
+  /** Jogo real da API de uma fase com o par de times esperado (em qualquer ordem). */
+  const apiMatchByTeams = (stage: MatchStage, t1: Team, t2: Team): Match | undefined =>
+    (byStage.get(stage) ?? []).find((m) => hasRealTeams(m) && matchHasTeams(m, t1, t2));
+
+  /** Jogo real da API de um 16-avo, casado pelo `matchId` do confronto. */
+  const apiMatchById = (matchId: number): Match | undefined =>
+    (byStage.get(MatchStage.LAST_32) ?? []).find((m) => m.id === matchId);
+
+  // Resolve os nós por num, em ordem de fase (cada fase usa os vencedores da anterior).
+  const nodeByNum = new Map<number, TreeNode>();
+
+  const resolveNode = (num: number): TreeNode => {
+    const game = schemaByNum.get(num)!;
+    const round = game.round as BracketRound;
+    const stage = round as unknown as MatchStage;
+    // Posição visual (placeholder; o slotIndex real é reatribuído ao montar as colunas).
+    if (round === 'LAST_32') {
+      const c = confrontoByNum.get(num);
+      if (!c) return apiNode(undefined, num, 'LAST_32', 'left', 0);
+      const real = apiMatchById(c.matchId);
+      return hasRealTeams(real)
+        ? apiNode(real, num, 'LAST_32', 'left', 0)
+        : confrontoNode(c, 'left', 0);
+    }
+    // Oitavas+: par esperado = vencedores dos feeders já resolvidos.
+    const feeders = feedersOf(game);
+    if (!feeders) return apiNode(undefined, num, round, 'left', 0);
+    const home = nodeWinner(nodeByNum.get(feeders[0])!);
+    const away = nodeWinner(nodeByNum.get(feeders[1])!);
+    if (!home || !away) return apiNode(undefined, num, round, 'left', 0);
+    const real = apiMatchByTeams(stage, home, away);
+    return real
+      ? apiNode(real, num, round, 'left', 0)
+      : apiNode(undefined, num, round, 'left', 0);
   };
 
-  /** Constrói o nó de um num na posição (round/side/slotIndex). */
-  const buildNode = (
-    num: number,
-    round: BracketRound,
-    side: BracketSide,
-    slotIndex: number,
-  ): TreeNode => {
-    if (round === 'LAST_32') {
-      // Prefere o jogo real (com times definidos) à projeção, quando existir.
-      const real = apiMatchFor(num);
-      if (hasRealTeams(real)) return apiNode(real, num, 'LAST_32', side, slotIndex);
-      const projected = sim.byNum.get(num);
-      return projected
-        ? projectedNode(projected, side, slotIndex)
-        : apiNode(undefined, num, 'LAST_32', side, slotIndex);
+  // 3º lugar: par = perdedores das semis. Resolvido após as semis (ver ordem abaixo).
+  const resolveThirdPlace = (): TreeNode => {
+    const game = schemaByNum.get(THIRD_PLACE_NUM)!;
+    const loserOf = (ref: SchemaMatch['home']): Team | null => {
+      if (ref?.kind !== 'loserOf') return null;
+      const node = nodeByNum.get(ref.match);
+      if (!node) return null;
+      if (node.home.winner && node.away.team) return node.away.team;
+      if (node.away.winner && node.home.team) return node.home.team;
+      return null;
+    };
+    const home = loserOf(game.home);
+    const away = loserOf(game.away);
+    if (!home || !away) return apiNode(undefined, THIRD_PLACE_NUM, 'THIRD_PLACE', 'left', 0);
+    const real = apiMatchByTeams(MatchStage.THIRD_PLACE, home, away);
+    return apiNode(real, THIRD_PLACE_NUM, 'THIRD_PLACE', 'left', 0);
+  };
+
+  for (const round of RESOLVE_ROUNDS) {
+    const nums = [...schemaByNum.values()]
+      .filter((g) => (g.round as BracketRound) === round)
+      .map((g) => g.num);
+    for (const num of nums) {
+      nodeByNum.set(num, round === 'THIRD_PLACE' ? resolveThirdPlace() : resolveNode(num));
     }
-    return apiNode(apiMatchFor(num), num, round, side, slotIndex);
+  }
+
+  // Monta as colunas a partir do layout (lado + ordem vertical), reusando os nós resolvidos.
+  const placeNode = (num: number, round: BracketRound, side: BracketSide, slotIndex: number): TreeNode => {
+    const base = nodeByNum.get(num)!;
+    return { ...base, id: `${round}-${side}-${slotIndex}`, side, slotIndex };
   };
 
   const buildSide = (side: BracketSide): BracketColumn[] =>
     SIDE_ROUNDS.map((round) => ({
       round,
       side,
-      nodes: numsFor(round, side).map((num, i) => buildNode(num, round, side, i)),
+      nodes: numsFor(round, side).map((num, i) => placeNode(num, round, side, i)),
     }));
 
   const left = buildSide('left');
   const right = buildSide('right');
 
-  // Final: nó central (num 104).
-  const finalMatch = apiMatchFor(FINAL_NUM);
-  const final = apiNode(finalMatch, FINAL_NUM, 'FINAL', 'left', 0);
-  final.id = 'FINAL';
+  // Final: nó central (num 104), já resolvido por times na ordem de fase.
+  const final: TreeNode = { ...nodeByNum.get(FINAL_NUM)!, id: 'FINAL', side: 'left', slotIndex: 0 };
 
-  // Disputa de 3º lugar (num 103). Os lados vêm dos perdedores das semis (preenchidos pela
-  // simulação); sem dados reais começa "A definir".
-  const thirdMatch = apiMatchFor(THIRD_PLACE_NUM);
-  const thirdPlace = apiNode(thirdMatch, THIRD_PLACE_NUM, 'THIRD_PLACE', 'left', 0);
-  thirdPlace.id = 'THIRD_PLACE';
+  // Disputa de 3º lugar (num 103).
+  const thirdPlace: TreeNode = {
+    ...nodeByNum.get(THIRD_PLACE_NUM)!,
+    id: 'THIRD_PLACE',
+    side: 'left',
+    slotIndex: 0,
+  };
 
   // Campeã: vencedor da final, quando encerrada.
-  let champion: Team | null = null;
-  if (finalMatch && isFinished(finalMatch.status)) {
-    const w = finalMatch.score.winner;
-    if (w === 'HOME_TEAM') champion = finalMatch.homeTeam;
-    else if (w === 'AWAY_TEAM') champion = finalMatch.awayTeam;
-    if (champion && isPlaceholderTeam(champion)) champion = null;
-  }
+  let champion: Team | null = nodeWinner(final);
+  if (champion && isPlaceholderTeam(champion)) champion = null;
 
   // Mata-mata "ausente" só quando NENHUMA fase de KO (oitavas+) existe nos dados.
   const koStages: MatchStage[] = SIDE_ROUNDS.slice(1).map((r) => r as unknown as MatchStage);
   koStages.push(MatchStage.FINAL);
-  const knockoutMissing = koStages.every((stage) => (byStage.get(stage) ?? []).length === 0);
+  const knockoutMissing =
+    last32.length === 0 && koStages.every((stage) => (byStage.get(stage) ?? []).length === 0);
 
   return {
     left,
@@ -332,7 +405,7 @@ export function buildBracketTree(
     final,
     thirdPlace,
     champion,
-    thirdsResolved: sim.thirdsResolved,
+    thirdsResolved: last32.length > 0,
     knockoutMissing,
   };
 }

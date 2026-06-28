@@ -35,3 +35,6 @@ export const GRUPOS_COLLECTION = 'grupos';
 
 /** Coleção dos grupos da Copa (fase de grupos): 1 doc por grupo (group-a, ..., group-l). */
 export const GROUPS_COLLECTION = 'wcGroups';
+
+/** Coleção dos confrontos dos 16-avos (LAST_32): 1 doc por confronto (match-01, ..., match-16). */
+export const LAST32_COLLECTION = 'wcLast32';

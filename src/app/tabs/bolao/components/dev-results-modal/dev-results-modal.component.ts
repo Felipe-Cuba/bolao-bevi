@@ -16,6 +16,7 @@ import { LucideFlaskConical, LucideShieldOff, LucideX } from '@lucide/angular';
 
 import { Match } from '@shared/models/match.model';
 import {
+  dedupeByTeamPair,
   groupMatchesPreservingOrder,
   stageLabel,
   STAGE_ORDER,
@@ -91,11 +92,12 @@ export class DevResultsModal {
     if (this.isGroupStage()) {
       return groupMatchesPreservingOrder(inStage);
     }
+    // dedupeByTeamPair: salvaguarda contra confrontos repetidos na mesma fase.
     return [
       {
         key: stage ?? 'KO',
         label: stage ? stageLabel(stage) : '',
-        matches: [...inStage].sort((a, b) => a.utcDate.localeCompare(b.utcDate)),
+        matches: dedupeByTeamPair([...inStage].sort((a, b) => a.utcDate.localeCompare(b.utcDate))),
       },
     ];
   });

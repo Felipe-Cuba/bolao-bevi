@@ -107,6 +107,30 @@ export function groupMatchesPreservingOrder(matches: Match[]): MatchGroup[] {
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
+/**
+ * Remove confrontos repetidos dentro de uma lista de jogos de uma MESMA fase (mesmo par de
+ * times, em qualquer ordem casa/fora). Mantém o primeiro de cada par. Jogos com algum lado
+ * sem id/tla (placeholder "A definir") passam intactos — não são deduplicáveis. Usado pelas
+ * modais (palpites e dev) como salvaguarda contra confrontos duplicados numa fase.
+ */
+export function dedupeByTeamPair(matches: Match[]): Match[] {
+  const seen = new Set<string>();
+  const out: Match[] = [];
+  for (const m of matches) {
+    const h = m.homeTeam.id ?? m.homeTeam.tla;
+    const a = m.awayTeam.id ?? m.awayTeam.tla;
+    if (h == null || a == null) {
+      out.push(m); // placeholder: não dá para deduplicar com segurança
+      continue;
+    }
+    const key = [String(h), String(a)].sort().join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(m);
+  }
+  return out;
+}
+
 const STAGE_LABEL: Record<string, string> = {
   PRELIMINARY_ROUND: 'Rodada preliminar',
   GROUP_STAGE: 'Fase de grupos',

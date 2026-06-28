@@ -1,0 +1,45 @@
+<div class="backdrop" (click)="onBackdrop($event)">
+  <div class="dialog bolao" role="dialog" aria-modal="true" [attr.aria-label]="title()">
+    <header class="head">
+      <h2 class="title">
+        <svg lucideCircleQuestionMark class="title__icon" [size]="18"></svg>
+        {{ title() }}
+      </h2>
+      <button class="icon-btn" (click)="close.emit()" aria-label="Fechar">
+        <svg lucideX [size]="18"></svg>
+      </button>
+    </header>
+
+    <div class="body">
+      @for (b of blocks(); track $index) {
+        @switch (b.kind) {
+          @case ('paragraph') {
+            <p class="para">{{ b.text }}</p>
+          }
+          @case ('heading') {
+            <h3 class="section">{{ b.text }}</h3>
+          }
+          @case ('topic') {
+            <p class="topic"><strong>{{ b.title }}</strong> {{ b.text }}</p>
+          }
+          @case ('score') {
+            <div class="score" [attr.data-tone]="b.tone">
+              @switch (b.tone) {
+                @case ('cravou') { <svg lucideCrosshair class="score__icon" [size]="18"></svg> }
+                @case ('trave') { <svg lucideGoal class="score__icon" [size]="18"></svg> }
+                @case ('acertou') { <svg lucideThumbsUp class="score__icon" [size]="18"></svg> }
+                @case ('errou') { <svg lucideX class="score__icon" [size]="18"></svg> }
+              }
+              <span class="score__label">{{ b.label }}</span>
+              <span class="score__text">{{ b.text }}</span>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    <footer class="foot">
+      <button class="b-btn b-btn--primary" (click)="close.emit()">Entendi</button>
+    </footer>
+  </div>
+</div>

@@ -20,8 +20,19 @@ import {
 } from '@lucide/angular';
 
 import { Match } from '@shared/models/match.model';
-import { groupMatchesPreservingOrder, stageLabel, STAGE_ORDER } from '@shared/utils/match-derivations.util';
+import {
+  dedupeByTeamPair,
+  groupMatchesPreservingOrder,
+  stageLabel,
+  STAGE_ORDER,
+} from '@shared/utils/match-derivations.util';
 import { isKnockout } from '@shared/utils/bolao-scoring.util';
+import {
+  buildPalpite,
+  draftAdvances,
+  isDrawLine,
+  needsAdvances,
+} from '@shared/utils/bolao-draft.util';
 import { isPlaceholderTeam } from '@shared/utils/teams.util';
 import { downloadJson, exportEntry, parseEntries, slugify } from '@shared/utils/bolao-io.util';
 import { BolaoStore } from '@core/bolao.store';
@@ -127,11 +138,12 @@ export class BolaoModal {
       return groupMatchesPreservingOrder(inStage);
     }
     // Mata-mata: uma única seção com os confrontos da fase, em ordem cronológica.
+    // dedupeByTeamPair: salvaguarda contra confrontos repetidos na mesma fase.
     return [
       {
         key: stage ?? 'KO',
         label: stage ? stageLabel(stage) : '',
-        matches: [...inStage].sort((a, b) => a.utcDate.localeCompare(b.utcDate)),
+        matches: dedupeByTeamPair([...inStage].sort((a, b) => a.utcDate.localeCompare(b.utcDate))),
       },
     ];
   });
@@ -168,6 +180,8 @@ export class BolaoModal {
 
   selectEntry(id: string): void {
     this.activeId.set(id);
+    // Mantém a seleção compartilhada (painel/chaveamento) em sincronia com a modal.
+    this.store.selectEntry(id);
     // Selecionar/trocar de palpite sempre entra em modo LEITURA (switch desligado).
     this.editing.set(false);
     const entry = this.entries().find((e) => e.id === id);
@@ -288,21 +302,17 @@ export class BolaoModal {
 
   /** Lado que se classifica conforme o rascunho (vencedor pelo placar, ou a escolha em empate). */
   draftAdvances(line: DraftLine | undefined): Advances | null {
-    if (!line || line.home == null || line.away == null) return null;
-    if (line.home > line.away) return 'HOME';
-    if (line.home < line.away) return 'AWAY';
-    return line.advances ?? null;
+    return draftAdvances(line);
   }
 
   /** Linha com placar completo e empatado (no mata-mata, exige escolher "quem passa"). */
   isDrawLine(line: DraftLine | undefined): boolean {
-    return !!line && line.home != null && line.away != null && line.home === line.away;
+    return isDrawLine(line);
   }
 
   /** Empate digitado num jogo de mata-mata ainda sem "quem passa" escolhido (palpite incompleto). */
   needsAdvances(match: Match, line: DraftLine | undefined): boolean {
-    if (!isKnockout(match) || !this.isDrawLine(line)) return false;
-    return line!.advances == null;
+    return needsAdvances(match, line);
   }
 
   async save(): Promise<void> {
@@ -318,23 +328,16 @@ export class BolaoModal {
     for (const [matchId, line] of this.draft()) {
       if (line.home == null || line.away == null) continue;
       const match = matchById.get(matchId);
-      const ko = match ? isKnockout(match) : false;
       // Mata-mata com empate exige "quem passa"; sem isso o palpite é ambíguo → bloqueia o salvar.
-      if (match && this.needsAdvances(match, line)) {
+      if (match && needsAdvances(match, line)) {
         this.feedback.set({
           kind: 'err',
           text: 'Indique quem passa nos jogos de mata-mata empatados.',
         });
         return;
       }
-      const palpite: Palpite = { matchId, home: line.home, away: line.away };
-      // Só grava "advances" no mata-mata (placar não-empate o deriva, mas guardar a escolha
-      // de empate mantém o palpite explícito). Nos grupos, o campo nunca é gravado.
-      if (ko) {
-        const adv = this.draftAdvances(line);
-        if (adv) palpite.advances = adv;
-      }
-      palpites.push(palpite);
+      const palpite = buildPalpite(matchId, line, match);
+      if (palpite) palpites.push(palpite);
     }
     try {
       await this.store.saveEntry(id, name, palpites);

@@ -8,8 +8,14 @@
 // sintéticos para cada nó cujos dois times ficaram definidos — substituindo na lista os
 // jogos de mata-mata que ainda estão "A definir". Jogos reais já definidos são preservados.
 
-import { Match, MatchPart, MatchStatus, MatchStage, Team } from '@shared/models/match.model';
-import { buildStandings } from '@shared/utils/match-derivations.util';
+import {
+  Last32Confronto,
+  Match,
+  MatchPart,
+  MatchStatus,
+  MatchStage,
+  Team,
+} from '@shared/models/match.model';
 import { buildBracketTree, BracketTree, TreeNode } from '@shared/utils/bracket-tree.util';
 import { applyBracketSimulation, PickSide } from '@shared/utils/bracket-sim-play.util';
 import { isKnockout } from '@shared/utils/bolao-scoring.util';
@@ -54,6 +60,16 @@ function allNodes(tree: BracketTree): TreeNode[] {
 }
 
 /** Deriva `MatchPart[]` de mata-mata a partir dos jogos (agrupa por stage; só DEV). */
+export function devKnockoutParts(matches: Match[]): MatchPart[] {
+  return knockoutPartsFromMatches(matches);
+}
+
+/** Deriva os confrontos de 16-avos a partir dos jogos LAST_32 (só DEV). */
+export function devLast32Confrontos(matches: Match[]): Last32Confronto[] {
+  return last32ConfrontosFromMatches(matches);
+}
+
+/** Deriva `MatchPart[]` de mata-mata a partir dos jogos (agrupa por stage; só DEV). */
 function knockoutPartsFromMatches(matches: Match[]): MatchPart[] {
   const KO_STAGES: MatchStage[] = [
     MatchStage.LAST_32,
@@ -81,16 +97,34 @@ function resultPick(r: DevResult): PickSide {
 }
 
 /**
- * Mescla confrontos de mata-mata SIMULADOS na lista de jogos (DEV). Deriva a classificação e
- * as fases do próprio `matches` e projeta os 16-avos. Como os jogos de mata-mata simulados
- * usam IDs SINTÉTICOS (nº do jogo, 73..104), os resultados forçados desses jogos vêm SEPARADOS
- * em `results` (mapeados por esse nº) e são aplicados aqui: definem o placar/winner do confronto
- * E guiam a cascata (quem avança à próxima fase). Sem resultado, o pick padrão é o lado "home".
+ * Deriva os confrontos de 16-avos (Last32Confronto) dos jogos LAST_32 presentes em `matches`
+ * (DEV: os jogos reais já vêm com times definidos). `num` segue a ordem de id (num = 73 + i).
+ */
+function last32ConfrontosFromMatches(matches: Match[]): Last32Confronto[] {
+  return matches
+    .filter((m) => String(m.stage) === MatchStage.LAST_32 && !isPlaceholderTeam(m.homeTeam) && !isPlaceholderTeam(m.awayTeam))
+    .sort((a, b) => a.id - b.id)
+    .map((m, i) => ({
+      numero: i + 1,
+      num: 73 + i,
+      matchId: m.id,
+      utcDate: m.utcDate,
+      homeTeam: m.homeTeam,
+      awayTeam: m.awayTeam,
+    }));
+}
+
+/**
+ * Mescla confrontos de mata-mata SIMULADOS na lista de jogos (DEV). Deriva os 16-avos e as
+ * fases do próprio `matches`. Como os jogos de mata-mata simulados usam IDs SINTÉTICOS (nº do
+ * jogo, 73..104), os resultados forçados desses jogos vêm SEPARADOS em `results` (mapeados por
+ * esse nº) e são aplicados aqui: definem o placar/winner do confronto E guiam a cascata (quem
+ * avança à próxima fase). Sem resultado, o pick padrão é o lado "home".
  */
 export function withSimulatedKnockout(matches: Match[], results: DevResults = new Map()): Match[] {
-  const standings = buildStandings(matches.filter((m) => !!m.group));
+  const last32 = last32ConfrontosFromMatches(matches);
   const knockoutParts = knockoutPartsFromMatches(matches);
-  const tree = buildBracketTree(standings, knockoutParts);
+  const tree = buildBracketTree(last32, knockoutParts);
   if (tree.knockoutMissing) return matches;
 
   // Picks seguem o resultado forçado do confronto (por nº do jogo) quando houver; senão "home".
@@ -111,7 +145,10 @@ export function withSimulatedKnockout(matches: Match[], results: DevResults = ne
   const simView = applyBracketSimulation(tree, picks);
   let simMatches = allNodes(simView)
     .map(nodeToMatch)
-    .filter((m): m is Match => m !== null);
+    .filter((m): m is Match => m !== null)
+    // LAST_32 NÃO é sintetizado: o jogo real já existe (com id real e times definidos).
+    // Sintetizar aqui duplicaria o confronto na fase (real + sintético com id = num).
+    .filter((m) => String(m.stage) !== MatchStage.LAST_32);
   if (!simMatches.length) return matches;
 
   // Aplica o resultado forçado (placar + winner) sobre cada confronto simulado, por nº do jogo.
@@ -129,7 +166,42 @@ export function withSimulatedKnockout(matches: Match[], results: DevResults = ne
     return !placeholder;
   });
 
-  return [...kept, ...simMatches];
+  // Salvaguarda final: NUNCA repetir um confronto na mesma fase (por par de times, em
+  // qualquer ordem) — mantém o primeiro de cada (stage + par), descarta o resto.
+  return dedupeByStageAndPair([...kept, ...simMatches]);
+}
+
+/** Chave estável de um par de times numa fase (independe da ordem casa/fora). */
+function stagePairKey(match: Match): string {
+  const ids = [match.homeTeam.id ?? match.homeTeam.tla, match.awayTeam.id ?? match.awayTeam.tla]
+    .map((v) => String(v))
+    .sort();
+  return `${String(match.stage)}|${ids.join('|')}`;
+}
+
+/**
+ * Remove confrontos repetidos DENTRO da mesma fase (mesmo par de times). Só de-duplica jogos
+ * de mata-mata com ambos os times definidos; grupos e placeholders passam intactos. Mantém a
+ * ordem de chegada (o primeiro vence).
+ */
+function dedupeByStageAndPair(matches: Match[]): Match[] {
+  const seen = new Set<string>();
+  const out: Match[] = [];
+  for (const m of matches) {
+    const dedupable =
+      String(m.stage) !== MatchStage.GROUP_STAGE &&
+      !isPlaceholderTeam(m.homeTeam) &&
+      !isPlaceholderTeam(m.awayTeam);
+    if (!dedupable) {
+      out.push(m);
+      continue;
+    }
+    const key = stagePairKey(m);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(m);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

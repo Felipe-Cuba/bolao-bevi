@@ -53,6 +53,77 @@
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
+.bracket__top {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.bracket__help {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.bracket__help:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.bracket__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bracket__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--on-accent, #fff);
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: filter 0.12s ease, opacity 0.12s ease;
+}
+
+.bracket__save:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.bracket__save:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.bracket__feedback {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--b-teal);
+}
+
+.bracket__feedback--err {
+  color: var(--b-red);
+}
+
 /* ── Aviso de simulação parcial ─────────────────────────────────────────────── */
 .bracket__hint {
   margin: 0 0 1rem;
@@ -91,6 +162,13 @@
 
 .half--right {
   flex-direction: row-reverse;
+}
+
+/* Metade direita: espelha o conteúdo de cada slot (placar do palpite junto ao nome à
+   direita; placar real à esquerda), acompanhando o sentido da chave (fluxo ←). */
+.half--right .slot {
+  flex-direction: row-reverse;
+  text-align: right;
 }
 
 /* ── Colunas (fases) ────────────────────────────────────────────────────────── */
@@ -385,6 +463,156 @@
 }
 .slot--bronze.slot--pickable:hover {
   background: color-mix(in srgb, var(--bronze) 32%, transparent);
+}
+
+/* ── Seletor de palpite (barra) ─────────────────────────────────────────────── */
+.picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  position: relative;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.picker__icon {
+  color: var(--accent);
+  flex: none;
+}
+
+.picker__select {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding-right: 1.1rem;
+  cursor: pointer;
+  max-width: 50vw;
+}
+
+.picker__select:focus {
+  outline: none;
+}
+
+.picker__chevron {
+  position: absolute;
+  right: 0.5rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* ── Card em modo palpite / encerrado ───────────────────────────────────────── */
+.node--bet {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.node--locked {
+  border-color: color-mix(in srgb, var(--surface-2) 90%, transparent);
+}
+
+/* Input de placar do palpite, à frente do nome do time. */
+.slot__bet {
+  flex: none;
+  width: 1.6rem;
+  text-align: center;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 2px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.slot__bet::-webkit-outer-spin-button,
+.slot__bet::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.slot__bet:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Placar do palpite em leitura (card encerrado). */
+.slot__bet--ro {
+  width: 1.6rem;
+  border-color: transparent;
+  background: none;
+  color: var(--muted);
+}
+
+/* Lado escolhido como "quem passa" no palpite (destaque sutil). */
+.slot--adv:not(.slot--win) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Jogo encerrado: o slot do palpite ("quem passa") é tingido pela cor do RESULTADO
+   (Cravou/Na trave/Acertou/Errou), sobrepondo o verde padrão do slot--adv/--win.
+   Mantém o slot--adv marcado (mesmo quem você palpitou e não passou de verdade). */
+.slot[data-bet-pts] {
+  --bet-c: var(--b-muted);
+}
+.slot[data-bet-pts='3'] {
+  --bet-c: var(--b-accent);
+}
+.slot[data-bet-pts='2'] {
+  --bet-c: var(--b-amber);
+}
+.slot[data-bet-pts='1'] {
+  --bet-c: var(--b-teal);
+}
+.slot[data-bet-pts='0'] {
+  --bet-c: var(--b-red);
+}
+
+.slot[data-bet-pts],
+.slot--adv.slot[data-bet-pts],
+.slot--win.slot[data-bet-pts] {
+  background: color-mix(in srgb, var(--bet-c) 18%, transparent);
+}
+
+.slot[data-bet-pts] .slot__name,
+.slot[data-bet-pts] .slot__bet--ro,
+.slot[data-bet-pts] .slot__score {
+  color: var(--bet-c);
+  font-weight: 800;
+}
+
+/* Rótulo de pontos do palpite no card encerrado. */
+.node__pts {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-align: center;
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+/* Mesma paleta de acertos/erros do painel do Bolão (tokens globais --b-*). */
+.node__pts[data-pts='3'] {
+  color: var(--b-accent);
+}
+
+.node__pts[data-pts='2'] {
+  color: var(--b-amber);
+}
+
+.node__pts[data-pts='1'] {
+  color: var(--b-teal);
+}
+
+.node__pts[data-pts='0'] {
+  color: var(--b-red);
 }
 
 /* ── Mobile ─────────────────────────────────────────────────────────────────── */

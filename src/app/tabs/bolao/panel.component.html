@@ -15,13 +15,16 @@
         <svg lucideTrophy class="picker__icon" [size]="18"></svg>
         <select class="picker__select" [value]="selectedId()" (change)="select($any($event.target).value)">
           @for (e of entries(); track e.id) {
-          <option [value]="e.id">{{ e.name }}</option>
+          <option [value]="e.id" [selected]="e.id === selectedId()">{{ e.name }}</option>
           }
         </select>
         <svg lucideChevronDown class="picker__chevron" [size]="16"></svg>
       </div>
 
       <div class="bar__actions">
+        <button class="ghost" (click)="helpOpen.set(true)" title="Como funciona?">
+          <svg lucideCircleQuestionMark [size]="16"></svg><span class="ghost__txt">Como funciona?</span>
+        </button>
         <button class="ghost" (click)="openModal.emit(selectedId())" title="Abrir palpites">
           <svg lucidePencil [size]="16"></svg><span class="ghost__txt">Palpites</span>
         </button>
@@ -46,7 +49,7 @@
         </span>
         @if (r.palpite; as p) {
         <span class="lrow__guess" [attr.data-pts]="r.pts">
-          palpite {{ p.home }}×{{ p.away }}
+          Palpite {{ p.home }}×{{ p.away }}
           @if (r.ptsLabel) { · {{ r.ptsLabel }} }
         </span>
         }
@@ -73,7 +76,7 @@
           <img class="lrow__crest" [src]="n.awayCrest" [alt]="n.awayTla | shortNamePt" loading="lazy" />
         </span>
         @if (n.palpite; as p) {
-        <span class="lrow__guess">palpite {{ p.home }}×{{ p.away }}</span>
+        <span class="lrow__guess">Palpite {{ p.home }}×{{ p.away }}</span>
         } @else {
         <span class="lrow__guess lrow__guess--empty">sem palpite</span>
         }
@@ -116,7 +119,7 @@
       @if (t.quaseCravou > 0) {
       <button type="button" class="tier tier--quase" (click)="openCategoria('quase')"
         title="Placar exato, mas errou quem passou nos pênaltis">
-        <svg lucideCrosshair [size]="20"></svg>
+        <svg lucideGoal [size]="20"></svg>
         <span class="tier__val">{{ t.quaseCravou }}</span>
         <span class="tier__lab">Na trave</span>
         <span class="tier__hint">+2 · errou quem passou</span>
@@ -236,4 +239,8 @@
 
 @if (detalhe(); as d) {
 <app-bolao-detalhe-modal [title]="d.title" [items]="d.items" (close)="closeDetalhe()" />
+}
+
+@if (helpOpen()) {
+<app-help-modal title="Como funciona a Pontuação?" [blocks]="helpBlocks" (close)="helpOpen.set(false)" />
 }

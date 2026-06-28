@@ -18,7 +18,8 @@ import { environment } from '../../environments/environment';
 import { GrupoService } from '@core/grupo.service';
 
 import { MatchesApi } from '@core/matches.api';
-import { Match, MatchPart, MatchStatus, Scorer } from '@shared/models/match.model';
+import { Last32Api } from '@core/last32.api';
+import { Last32Confronto, Match, MatchPart, MatchStatus, Scorer } from '@shared/models/match.model';
 import {
   buildHighlights,
   buildStandings,
@@ -29,6 +30,8 @@ import { buildBracketTree } from '@shared/utils/bracket-tree.util';
 import {
   withSimulatedKnockout,
   withDevResults,
+  devLast32Confrontos,
+  devKnockoutParts,
   DevResults,
 } from '@shared/utils/dev-sim-knockout.util';
 import {
@@ -104,6 +107,7 @@ const DEV_SIM_KO = environment.devSimKo;
 export class WcPage {
   private readonly route = inject(ActivatedRoute);
   private readonly matchesApi = inject(MatchesApi);
+  private readonly last32Api = inject(Last32Api);
   readonly grupo = inject(GrupoService);
 
   // Uma única query compartilhada; cache + gate de 30s (Firestore) controlam os requests.
@@ -134,6 +138,17 @@ export class WcPage {
 
   private readonly knockoutParts = computed<MatchPart[]>(
     () => this.knockoutQuery.data()?.parts ?? [],
+  );
+
+  // 16-avos: confrontos reais (coleção wcLast32). Lazy — só dispara na aba Chaveamento.
+  // São as FOLHAS da árvore; oitavas→final vêm da `knockoutQuery`.
+  readonly last32Query = injectQuery(() => ({
+    ...this.last32Api.last32QueryOptions(),
+    enabled: this.filters().tab === 'bracket',
+  }));
+
+  private readonly last32Confrontos = computed<Last32Confronto[]>(
+    () => this.last32Query.data() ?? [],
   );
 
   /** Jogos da fase de grupos vindos das partições (para a classificação). */
@@ -213,9 +228,14 @@ export class WcPage {
   // Derivações (não disparam request).
   readonly highlights = computed(() => buildHighlights(this.matches()));
   readonly standings = computed(() => buildStandings(this.groupMatches()));
-  readonly bracketTree = computed(() =>
-    buildBracketTree(this.standings(), this.knockoutParts()),
-  );
+  readonly bracketTree = computed(() => {
+    if (DEV_SIM_KO) {
+      // DEV: deriva 16-avos e fases do mata-mata simulado (sem Firebase).
+      const sim = this.bolaoMatches();
+      return buildBracketTree(devLast32Confrontos(sim), devKnockoutParts(sim));
+    }
+    return buildBracketTree(this.last32Confrontos(), this.knockoutParts());
+  });
   readonly groups = computed(() => distinctGroups(this.matches()));
 
   /** DEV ONLY: expõe a flag para o template (mostra o botão de editar resultados). */

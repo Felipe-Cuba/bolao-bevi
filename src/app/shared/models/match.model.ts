@@ -242,6 +242,23 @@ export interface MatchesResponse {
   matches: Match[];
 }
 
+// --- Confrontos dos 16-avos (collection Firestore `wcLast32`) ---
+// 1 documento por confronto, gravado pelo script functions/scripts/seed-last-32.js.
+// Os times vêm da API (já definidos) e dão a base das FOLHAS da árvore do chaveamento.
+
+/**
+ * Confronto dos 16-avos (LAST_32), numerado de 1 a 16 conforme `brackets.md`.
+ * `num` é o nº oficial do jogo na árvore (73..88), com `num = 72 + numero`.
+ */
+export interface Last32Confronto {
+  numero: number; // 1..16 (ordem do brackets.md)
+  num: number; // 73..88 (nº oficial; num = 72 + numero)
+  matchId: number; // id real do jogo na API
+  utcDate: string; // ISO 8601
+  homeTeam: Team;
+  awayTeam: Team;
+}
+
 // Status considerados "ao vivo" para destaque na UI.
 export const LIVE_STATUSES: ReadonlySet<MatchStatus> = new Set([
   MatchStatus.LIVE,
