@@ -32,3 +32,6 @@ export const SCORERS_DOC_ID = 'current';
 
 /** Coleção dos grupos de palpites. */
 export const GRUPOS_COLLECTION = 'grupos';
+
+/** Coleção dos grupos da Copa (fase de grupos): 1 doc por grupo (group-a, ..., group-l). */
+export const GROUPS_COLLECTION = 'wcGroups';

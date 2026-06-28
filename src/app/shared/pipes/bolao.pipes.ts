@@ -8,7 +8,13 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 import { Match, Team } from '@shared/models/match.model';
 import { isPlaceholderTeam, teamCrest, teamNamePt } from '@shared/utils/teams.util';
-import { isScorable, scoreGuess } from '@shared/utils/bolao-scoring.util';
+import {
+  advancesFromMatch,
+  isKnockout,
+  isScorable,
+  pointsLabel,
+  scoreGuess,
+} from '@shared/utils/bolao-scoring.util';
 import { DraftLine } from '@shared/models/bolao.model';
 
 @Pipe({ name: 'teamName' })
@@ -54,16 +60,45 @@ export class RealScorePipe implements PipeTransform {
   }
 }
 
+/** Verdadeiro quando o jogo é de mata-mata (precisa de "quem passa"). */
+@Pipe({ name: 'isKnockout' })
+export class IsKnockoutPipe implements PipeTransform {
+  transform(match: Match): boolean {
+    return isKnockout(match);
+  }
+}
+
+/** Pontos do palpite (0|1|2|3|null) → rótulo: Cravou / Na trave / Acertou / Errou. */
+@Pipe({ name: 'ptsLabel' })
+export class PtsLabelPipe implements PipeTransform {
+  transform(pts: 0 | 1 | 2 | 3 | null): string {
+    return pointsLabel(pts);
+  }
+}
+
+/** Lado que REALMENTE se classificou ('HOME'|'AWAY') no mata-mata já pontuável, ou null. */
+@Pipe({ name: 'realAdvancesSide' })
+export class RealAdvancesSidePipe implements PipeTransform {
+  transform(match: Match): 'HOME' | 'AWAY' | null {
+    if (!isKnockout(match) || !isScorable(match)) return null;
+    return advancesFromMatch(match);
+  }
+}
+
+
 /**
- * Pontos do palpite atual (do rascunho) contra o jogo: 0 | 1 | 3, ou null quando o jogo
+ * Pontos do palpite atual (do rascunho) contra o jogo: 0 | 1 | 2 | 3, ou null quando o jogo
  * ainda não pontua ou a linha está incompleta. Recebe a `DraftLine` específica (não o Map
- * inteiro) para reavaliar só a linha que mudou.
+ * inteiro) para reavaliar só a linha que mudou. No mata-mata usa `line.advances` (quem passa).
  */
 @Pipe({ name: 'livePoints' })
 export class LivePointsPipe implements PipeTransform {
-  transform(match: Match, line: DraftLine | undefined): 0 | 1 | 3 | null {
+  transform(match: Match, line: DraftLine | undefined): 0 | 1 | 2 | 3 | null {
     if (!isScorable(match)) return null;
     if (!line || line.home == null || line.away == null) return null;
-    return scoreGuess({ matchId: match.id, home: line.home, away: line.away }, match);
+    return scoreGuess(
+      { matchId: match.id, home: line.home, away: line.away, advances: line.advances ?? undefined },
+      match,
+    );
   }
 }

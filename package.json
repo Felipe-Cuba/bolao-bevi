@@ -9,6 +9,7 @@
     "test": "ng test",
     "emulator": "firebase emulators:start --only functions",
     "start:api": "ng serve --configuration devapi",
+    "start:devsim": "ng serve --configuration devsim",
     "deploy": "ng build && firebase deploy --only hosting --project bolao-bevi"
   },
   "private": true,

@@ -3,7 +3,10 @@ import { LucideTrophy, LucideX } from '@lucide/angular';
 
 import { teamCrest } from '@shared/utils/teams.util';
 import { Match, Team } from '@shared/models/match.model';
-import { ScoredGuess } from '@shared/utils/bolao-scoring.util';
+import { ScoredGuess, advancesFromMatch, isKnockout } from '@shared/utils/bolao-scoring.util';
+import { Advances } from '@shared/models/bolao.model';
+import { ShortNamePtPipe } from '@shared/pipes/match-labels.pipes';
+import { PtsLabelPipe } from '@shared/pipes/bolao.pipes';
 
 /** Linha pronta para render: times, placar real, palpite e pontos. */
 interface DetalheRow {
@@ -16,7 +19,11 @@ interface DetalheRow {
   realAway: number;
   guessHome: number;
   guessAway: number;
-  pts: 0 | 1 | 3;
+  pts: 0 | 1 | 2 | 3;
+  /** Lado que REALMENTE se classificou no mata-mata ('HOME'|'AWAY'), p/ colorir só o vencedor. */
+  realSide: 'HOME' | 'AWAY' | null;
+  /** TLA do time que o PALPITE indicou vencer/passar (null em palpite de empate sem escolha). */
+  guessTla: string | null;
 }
 
 /**
@@ -26,7 +33,7 @@ interface DetalheRow {
 @Component({
   selector: 'app-bolao-detalhe-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideTrophy, LucideX],
+  imports: [LucideTrophy, LucideX, ShortNamePtPipe, PtsLabelPipe],
   templateUrl: './detail-modal.component.html',
   styleUrl: './detail-modal.component.css',
 })
@@ -48,6 +55,8 @@ export class BolaoDetalheModal {
       guessHome: it.palpite.home,
       guessAway: it.palpite.away,
       pts: it.pts,
+      realSide: isKnockout(it.match) ? advancesFromMatch(it.match) : null,
+      guessTla: this.sideTla(it.match, this.guessSide(it)),
     })),
   );
 
@@ -55,8 +64,19 @@ export class BolaoDetalheModal {
     return (team as Team).tla || team.shortName || '—';
   }
 
-  ptsLabel(pts: 0 | 1 | 3): string {
-    return pts === 3 ? '+3' : pts === 1 ? '+1' : '0';
+  /** TLA do time de um lado do confronto, ou null. */
+  private sideTla(match: Match, side: Advances | null): string | null {
+    if (side === 'HOME') return this.teamTla(match.homeTeam);
+    if (side === 'AWAY') return this.teamTla(match.awayTeam);
+    return null;
+  }
+
+  /** Lado que o palpite indica vencer/passar: vencedor pelo placar, ou a escolha em empate. */
+  private guessSide(it: ScoredGuess): Advances | null {
+    const { home, away, advances } = it.palpite;
+    if (home > away) return 'HOME';
+    if (home < away) return 'AWAY';
+    return advances ?? null;
   }
 
   onBackdrop(event: MouseEvent): void {

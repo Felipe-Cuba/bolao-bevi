@@ -16,5 +16,7 @@ export const environment = {
   localSeedUrl: 'wc-response-complete.json',
   // Usa a API real (via proxy). Em qualquer falha, cai no cache do Firestore.
   useLocalData: false,
+  // Recurso de DEV; sempre desligado em produção.
+  devSimKo: false,
   firebaseConfig,
 };

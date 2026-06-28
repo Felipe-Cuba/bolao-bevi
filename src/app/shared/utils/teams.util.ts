@@ -107,6 +107,57 @@ export const TEAM_NAME_PT: Record<TeamCode, string> = {
   [TeamCode.UZB]: 'Uzbequistão',
 };
 
+export const TEAM_CODE_PT: Record<TeamCode, string> = {
+  [TeamCode.ALG]: 'ALG', // Argélia
+  [TeamCode.ARG]: 'ARG', // Argentina
+  [TeamCode.AUS]: 'AUS', // Austrália
+  [TeamCode.AUT]: 'AUT', // Áustria
+  [TeamCode.BEL]: 'BEL', // Bélgica
+  [TeamCode.BIH]: 'BOS', // Bósnia e Herzegovina
+  [TeamCode.BRA]: 'BRA', // Brasil
+  [TeamCode.CAN]: 'CAN', // Canadá
+  [TeamCode.CPV]: 'CBV', // Cabo Verde
+  [TeamCode.COL]: 'COL', // Colômbia
+  [TeamCode.COD]: 'RDC', // RD Congo
+  [TeamCode.CRO]: 'CRO', // Croácia
+  [TeamCode.CUW]: 'CUR', // Curaçao
+  [TeamCode.CZE]: 'TCH', // Tchéquia
+  [TeamCode.ECU]: 'EQU', // Equador
+  [TeamCode.EGY]: 'EGI', // Egito
+  [TeamCode.ENG]: 'ING', // Inglaterra
+  [TeamCode.FRA]: 'FRA', // França
+  [TeamCode.GER]: 'ALE', // Alemanha
+  [TeamCode.GHA]: 'GAN', // Gana
+  [TeamCode.HAI]: 'HAI', // Haiti
+  [TeamCode.IRN]: 'IRA', // Irã
+  [TeamCode.IRQ]: 'IRQ', // Iraque
+  [TeamCode.CIV]: 'CMF', // Costa do Marfim
+  [TeamCode.JPN]: 'JAP', // Japão
+  [TeamCode.JOR]: 'JOR', // Jordânia
+  [TeamCode.MEX]: 'MEX', // México
+  [TeamCode.MAR]: 'MAR', // Marrocos
+  [TeamCode.NED]: 'HOL', // Holanda
+  [TeamCode.NZL]: 'NZE', // Nova Zelândia
+  [TeamCode.NOR]: 'NOR', // Noruega
+  [TeamCode.PAN]: 'PAN', // Panamá
+  [TeamCode.PAR]: 'PAR', // Paraguai
+  [TeamCode.POR]: 'POR', // Portugal
+  [TeamCode.QAT]: 'CAT', // Catar
+  [TeamCode.KSA]: 'ARS', // Arábia Saudita
+  [TeamCode.SCO]: 'ESC', // Escócia
+  [TeamCode.SEN]: 'SEN', // Senegal
+  [TeamCode.RSA]: 'AFS', // África do Sul
+  [TeamCode.KOR]: 'COR', // Coreia do Sul
+  [TeamCode.ESP]: 'ESP', // Espanha
+  [TeamCode.SWE]: 'SUE', // Suécia
+  [TeamCode.SUI]: 'SUI', // Suíça
+  [TeamCode.TUN]: 'TUN', // Tunísia
+  [TeamCode.TUR]: 'TUR', // Turquia
+  [TeamCode.USA]: 'EUA', // Estados Unidos
+  [TeamCode.URY]: 'URU', // Uruguai
+  [TeamCode.UZB]: 'UZB', // Uzbequistão
+};
+
 /**
  * Nome em português de uma seleção; cai no nome original da API se o código
  * não estiver mapeado, ou em "A definir" quando o time ainda não foi definido
@@ -116,6 +167,12 @@ export function teamNamePt(team: Pick<Team, 'tla' | 'name'> | null | undefined):
   if (!team) return 'A definir';
   const code = team.tla as TeamCode;
   return TEAM_NAME_PT[code] ?? team.name ?? 'A definir';
+}
+
+export function teamShortNamePt(team: Pick<Team, 'tla' | 'shortName'> | string | null | undefined): string {
+  if (!team) return 'A definir';
+  const code = typeof team === 'string' ? team as TeamCode : team.tla as TeamCode;
+  return TEAM_CODE_PT[code] ?? (typeof team === 'string' ? team : team.shortName) ?? 'A definir';
 }
 
 /** True quando o time ainda não foi definido (placeholder de mata-mata). */

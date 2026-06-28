@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import {
+  LucideDownload,
   LucidePlus,
   LucideSave,
   LucideShieldOff,
@@ -20,15 +21,19 @@ import {
 
 import { Match } from '@shared/models/match.model';
 import { groupMatchesPreservingOrder, stageLabel, STAGE_ORDER } from '@shared/utils/match-derivations.util';
+import { isKnockout } from '@shared/utils/bolao-scoring.util';
 import { isPlaceholderTeam } from '@shared/utils/teams.util';
-import { parseEntries } from '@shared/utils/bolao-io.util';
+import { downloadJson, exportEntry, parseEntries, slugify } from '@shared/utils/bolao-io.util';
 import { BolaoStore } from '@core/bolao.store';
-import { DraftLine, Palpite } from '@shared/models/bolao.model';
+import { Advances, DraftLine, Palpite } from '@shared/models/bolao.model';
 import {
   CanEditPipe,
+  IsKnockoutPipe,
   IsPlaceholderPipe,
   IsScorablePipe,
   LivePointsPipe,
+  PtsLabelPipe,
+  RealAdvancesSidePipe,
   RealScorePipe,
   TeamCrestPipe,
   TeamNamePipe,
@@ -43,6 +48,7 @@ import {
     LucidePlus,
     LucideTrash2,
     LucideSave,
+    LucideDownload,
     LucideShieldOff,
     LucideUpload,
     TeamNamePipe,
@@ -50,8 +56,11 @@ import {
     IsPlaceholderPipe,
     CanEditPipe,
     IsScorablePipe,
-    RealScorePipe,
     LivePointsPipe,
+    IsKnockoutPipe,
+    PtsLabelPipe,
+    RealScorePipe,
+    RealAdvancesSidePipe,
   ],
   templateUrl: './entry-modal.component.html',
   styleUrl: './entry-modal.component.css',
@@ -62,6 +71,8 @@ export class BolaoModal {
   readonly matches = input.required<Match[]>();
   /** Palpite a pré-selecionar ao abrir (ex.: o selecionado no painel). null = primeiro. */
   readonly initialId = input<string | null>(null);
+  /** DEV ONLY: habilita atalhos de desenvolvimento (ex.: zerar um palpite). */
+  readonly dev = input<boolean>(false);
   readonly close = output<void>();
 
   readonly entries = this.store.entries;
@@ -74,6 +85,16 @@ export class BolaoModal {
 
   /** Fase ativa (aba). Default: a primeira fase presente (normalmente GROUP_STAGE). */
   readonly activeStage = signal<string | null>(null);
+
+  /**
+   * Modo de edição (switch ao lado do nome). Desligado (padrão): placares ficam só leitura
+   * e o seletor "Quem passa?" some — o time escolhido fica realçado (branco/sublinhado).
+   * Ligado: inputs editáveis e, no mata-mata, o seletor reaparece.
+   */
+  readonly editing = signal(false);
+  toggleEditing(): void {
+    this.editing.update((v) => !v);
+  }
 
   /** Feedback do import (sucesso/erro), exibido inline. */
   readonly feedback = signal<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -147,11 +168,13 @@ export class BolaoModal {
 
   selectEntry(id: string): void {
     this.activeId.set(id);
+    // Selecionar/trocar de palpite sempre entra em modo LEITURA (switch desligado).
+    this.editing.set(false);
     const entry = this.entries().find((e) => e.id === id);
     this.editName.set(entry?.name ?? '');
     const map = new Map<number, DraftLine>();
     for (const p of entry?.palpites ?? []) {
-      map.set(p.matchId, { home: p.home, away: p.away });
+      map.set(p.matchId, { home: p.home, away: p.away, advances: p.advances ?? null });
     }
     this.draft.set(map);
   }
@@ -163,9 +186,17 @@ export class BolaoModal {
       const entry = await this.store.createEntry(name);
       this.newName.set('');
       this.selectEntry(entry.id);
+      this.editing.set(true); // palpite novo já abre em modo edição
     } catch (err) {
       this.feedback.set({ kind: 'err', text: (err as Error).message });
     }
+  }
+
+  /** Baixa o palpite ativo como JSON. */
+  exportActive(): void {
+    const entry = this.activeEntry();
+    if (!entry) return;
+    downloadJson(`bolao-${slugify(entry.name)}.json`, exportEntry(entry));
   }
 
   /** Lê o arquivo escolhido, valida e importa para o store (mesma lógica do painel). */
@@ -211,6 +242,7 @@ export class BolaoModal {
   }
 
   setScore(matchId: number, side: 'home' | 'away', raw: string): void {
+    if (!this.editing()) return; // só em modo edição
     // Guarda: não aceita palpite de confronto ainda não definido (placeholder).
     const match = this.matches().find((m) => m.id === matchId);
     if (match && !this.canEdit(match)) return;
@@ -218,11 +250,59 @@ export class BolaoModal {
     const value = raw === '' ? null : Math.max(0, Math.trunc(Number(raw)));
     this.draft.update((map) => {
       const next = new Map(map);
-      const line = { ...(next.get(matchId) ?? { home: null, away: null }) };
+      const line: DraftLine = { ...(next.get(matchId) ?? { home: null, away: null }) };
       line[side] = Number.isNaN(value as number) ? null : value;
+      // Mata-mata: placar não-empate define o classificado pelo próprio placar — descarta a
+      // escolha manual de "quem passa" (ela só vale quando o palpite é de empate).
+      if (match && isKnockout(match) && line.home != null && line.away != null && line.home !== line.away) {
+        line.advances = null;
+      }
       next.set(matchId, line);
       return next;
     });
+  }
+
+  /** DEV: zera o palpite de UM jogo (remove a linha do rascunho). Salva ao clicar em "Salvar". */
+  clearScore(matchId: number): void {
+    this.draft.update((map) => {
+      if (!map.has(matchId)) return map;
+      const next = new Map(map);
+      next.delete(matchId);
+      return next;
+    });
+  }
+
+  /** Define "quem passa" num jogo de mata-mata (usado quando o palpite é de empate). */
+  setAdvances(matchId: number, side: Advances): void {
+    if (!this.editing()) return; // só em modo edição
+    const match = this.matches().find((m) => m.id === matchId);
+    if (match && !this.canEdit(match)) return;
+    this.draft.update((map) => {
+      const next = new Map(map);
+      const line: DraftLine = { ...(next.get(matchId) ?? { home: null, away: null }) };
+      line.advances = line.advances === side ? null : side; // toggle
+      next.set(matchId, line);
+      return next;
+    });
+  }
+
+  /** Lado que se classifica conforme o rascunho (vencedor pelo placar, ou a escolha em empate). */
+  draftAdvances(line: DraftLine | undefined): Advances | null {
+    if (!line || line.home == null || line.away == null) return null;
+    if (line.home > line.away) return 'HOME';
+    if (line.home < line.away) return 'AWAY';
+    return line.advances ?? null;
+  }
+
+  /** Linha com placar completo e empatado (no mata-mata, exige escolher "quem passa"). */
+  isDrawLine(line: DraftLine | undefined): boolean {
+    return !!line && line.home != null && line.away != null && line.home === line.away;
+  }
+
+  /** Empate digitado num jogo de mata-mata ainda sem "quem passa" escolhido (palpite incompleto). */
+  needsAdvances(match: Match, line: DraftLine | undefined): boolean {
+    if (!isKnockout(match) || !this.isDrawLine(line)) return false;
+    return line!.advances == null;
   }
 
   async save(): Promise<void> {
@@ -233,10 +313,28 @@ export class BolaoModal {
       this.feedback.set({ kind: 'err', text: 'O nome do palpite não pode ficar vazio.' });
       return;
     }
+    const matchById = new Map(this.matches().map((m) => [m.id, m]));
     const palpites: Palpite[] = [];
     for (const [matchId, line] of this.draft()) {
       if (line.home == null || line.away == null) continue;
-      palpites.push({ matchId, home: line.home, away: line.away });
+      const match = matchById.get(matchId);
+      const ko = match ? isKnockout(match) : false;
+      // Mata-mata com empate exige "quem passa"; sem isso o palpite é ambíguo → bloqueia o salvar.
+      if (match && this.needsAdvances(match, line)) {
+        this.feedback.set({
+          kind: 'err',
+          text: 'Indique quem passa nos jogos de mata-mata empatados.',
+        });
+        return;
+      }
+      const palpite: Palpite = { matchId, home: line.home, away: line.away };
+      // Só grava "advances" no mata-mata (placar não-empate o deriva, mas guardar a escolha
+      // de empate mantém o palpite explícito). Nos grupos, o campo nunca é gravado.
+      if (ko) {
+        const adv = this.draftAdvances(line);
+        if (adv) palpite.advances = adv;
+      }
+      palpites.push(palpite);
     }
     try {
       await this.store.saveEntry(id, name, palpites);

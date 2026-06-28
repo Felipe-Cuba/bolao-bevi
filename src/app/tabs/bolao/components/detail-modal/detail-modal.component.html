@@ -14,19 +14,20 @@
     <ul class="list">
       @for (r of rows(); track r.id) {
       <li class="drow">
-        <span class="drow__team">
+        <span class="drow__team" [attr.data-pts]="r.realSide === 'HOME' ? r.pts : null">
           <img class="drow__crest" [src]="r.homeCrest" [alt]="r.homeTla" loading="lazy" />
-          {{ r.homeTla }}
+          {{ r.homeTla | shortNamePt }}
         </span>
         <span class="drow__score">{{ r.realHome }}<span class="drow__x">×</span>{{ r.realAway }}</span>
-        <span class="drow__team drow__team--away">
-          {{ r.awayTla }}
+        <span class="drow__team drow__team--away" [attr.data-pts]="r.realSide === 'AWAY' ? r.pts : null">
+          {{ r.awayTla | shortNamePt }}
           <img class="drow__crest" [src]="r.awayCrest" [alt]="r.awayTla" loading="lazy" />
         </span>
         <span class="drow__guess">
           palpite {{ r.guessHome }}×{{ r.guessAway }}
+          @if (r.guessTla) { · {{ r.guessTla | shortNamePt }} }
         </span>
-        <span class="drow__pts" [attr.data-pts]="r.pts">{{ ptsLabel(r.pts) }}</span>
+        <span class="drow__pts" [attr.data-pts]="r.pts">{{ r.pts | ptsLabel }}</span>
       </li>
       }
     </ul>

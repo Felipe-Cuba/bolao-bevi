@@ -1,21 +1,73 @@
 // Lógica de pontuação do Bolão Bevi (funções puras).
 //
-// Regras (palpite × placar real `score.fullTime`):
-//   - placar exato        → +3
-//   - só o resultado certo → +1 (mesmo vencedor, ou empate acertado)
-//   - errou               →  0
+// FASE DE GRUPOS (palpite × placar real `score.fullTime`):
+//   - placar exato         → +3
+//   - só o resultado certo  → +1 (mesmo vencedor, ou empate acertado)
+//   - errou                →  0
+//
+// MATA-MATA (a partir dos 16-avos): não há empate final — alguém sempre se classifica
+// (pênaltis). O palpite tem placar (tempo regular + prorrogação, em `score.fullTime`) e
+// "quem passa" (`palpite.advances`, derivado de `score.winner` no jogo real):
+//   - placar exato + quem passou certo  → +3
+//   - placar exato + errou quem passou  → +2 (só possível em empate decidido nos pênaltis)
+//   - errou placar + quem passou certo  → +1
+//   - errou tudo                        →  0
+//
 // Só pontua jogos com resultado real disponível: FINISHED ou IN_PLAY (placar definido).
 
 import { Match, MatchStatus, isLive } from '@shared/models/match.model';
 import { STAGE_ORDER, stageLabel } from '@shared/utils/match-derivations.util';
-import { BolaoEntry, Palpite } from '@shared/models/bolao.model';
+import { Advances, BolaoEntry, Palpite } from '@shared/models/bolao.model';
 
 export type Outcome = 'HOME' | 'AWAY' | 'DRAW';
+
+/** Só o valor do palpite ("+3"/"+2"/"+1"/"0"). */
+const pointsToValue: Record<0 | 1 | 2 | 3, string> = {
+  3: '+3',
+  2: '+2',
+  1: '+1',
+  0: '0',
+};
+
+/** Valor + rótulo futebolístico ("+3 Cravou" … "0 Errou"). */
+const pointsToLabel: Record<0 | 1 | 2 | 3, string> = {
+  3: '+3 Cravou',
+  2: '+2 Na trave',
+  1: '+1 Acertou',
+  0: '0 Errou',
+};
 
 export function outcome(home: number, away: number): Outcome {
   if (home > away) return 'HOME';
   if (home < away) return 'AWAY';
   return 'DRAW';
+}
+
+/** Fase de mata-mata? (qualquer fase eliminatória; grupos e preliminares usam a regra antiga). */
+export function isKnockout(match: Match): boolean {
+  const s = String(match.stage);
+  return s !== 'GROUP_STAGE' && s !== 'PRELIMINARY_ROUND';
+}
+
+/**
+ * Lado que se classificou no jogo real. Usa `score.winner` (fonte da verdade, inclui
+ * pênaltis); como reforço, num placar não-empate o vencedor pelo `fullTime` decide (caso a
+ * API venha sem `winner`). Null só quando empate e sem `winner` (ainda indefinido).
+ */
+export function advancesFromMatch(match: Match): Advances | null {
+  if (match.score.winner === 'HOME_TEAM') return 'HOME';
+  if (match.score.winner === 'AWAY_TEAM') return 'AWAY';
+  const { home, away } = match.score.fullTime;
+  if (home != null && away != null && home !== away) return home > away ? 'HOME' : 'AWAY';
+  return null;
+}
+
+/** Lado classificado implícito num palpite: vencedor pelo placar, ou o escolhido em empate. */
+function palpiteAdvances(palpite: Palpite): Advances | null {
+  const o = outcome(palpite.home, palpite.away);
+  if (o === 'HOME') return 'HOME';
+  if (o === 'AWAY') return 'AWAY';
+  return palpite.advances ?? null; // empate → depende da escolha de "quem passa"
 }
 
 /** Indica se o jogo já tem resultado real para entrar no cálculo. */
@@ -25,15 +77,36 @@ export function isScorable(match: Match): boolean {
   return home != null && away != null;
 }
 
+/** Rótulo completo (valor + nome): "+3 Cravou" … "0 Errou". Para as badges padrão. */
+export function pointsLabel(pts: 0 | 1 | 2 | 3 | null): string {
+  return pts != null ? pointsToLabel[pts] : '';
+}
+
+/** Só o valor: "+3" … "0". Para os cards de jogos ao vivo (espaço curto). */
+export function pointsValue(pts: 0 | 1 | 2 | 3 | null): string {
+  return pts != null ? pointsToValue[pts] : '';
+}
+
 /** Pontos de um palpite contra um jogo (0 se o jogo ainda não pontua). */
-export function scoreGuess(palpite: Palpite, match: Match): 0 | 1 | 3 {
+export function scoreGuess(palpite: Palpite, match: Match): 0 | 1 | 2 | 3 {
   if (!isScorable(match)) return 0;
   const realHome = match.score.fullTime.home as number;
   const realAway = match.score.fullTime.away as number;
+  const placarExato = palpite.home === realHome && palpite.away === realAway;
 
-  if (palpite.home === realHome && palpite.away === realAway) return 3;
-  if (outcome(palpite.home, palpite.away) === outcome(realHome, realAway)) return 1;
-  return 0;
+  if (!isKnockout(match)) {
+    if (placarExato) return 3;
+    if (outcome(palpite.home, palpite.away) === outcome(realHome, realAway)) return 1;
+    return 0;
+  }
+
+  // Mata-mata: combina placar exato com "quem passa".
+  const realAdvances = advancesFromMatch(match);
+  const guessAdvances = palpiteAdvances(palpite);
+  const passouCerto = realAdvances != null && guessAdvances === realAdvances;
+
+  if (placarExato) return passouCerto ? 3 : 2;
+  return passouCerto ? 1 : 0;
 }
 
 /** Pontuação de um único dia com jogos pontuados. */
@@ -48,7 +121,7 @@ export interface DayTally {
 export interface PhaseTally {
   /** Chave estável: 'GROUP_1'..'GROUP_3' (rodadas) ou o stage do mata-mata. */
   key: string;
-  label: string; // 'Rodada 1' / 'Oitavas de final' / ...
+  label: string; // 'Grupos - R1' / 'Oitavas de final' / ...
   order: number; // ordem cronológica oficial (p/ ordenar)
   points: number;
   jogos: number; // jogos pontuados nessa fase/rodada
@@ -56,8 +129,9 @@ export interface PhaseTally {
 
 export interface EntryTally {
   total: number;
-  cravou: number; // palpites de +3 (placar exato)
-  acertou: number; // palpites de +1 (resultado certo)
+  cravou: number; // palpites de +3 (placar exato e, no mata-mata, quem passou certo)
+  quaseCravou: number; // palpites de +2 (placar exato, mas errou quem passou nos pênaltis)
+  acertou: number; // palpites de +1 (resultado certo / quem passou)
   errou: number; // palpites de 0 (sobre jogos já pontuáveis)
   jogosPontuados: number; // quantos jogos com palpite já tinham resultado
   porGrupo: Record<string, number>; // pontos somados por grupo (GROUP_x ou "KO" p/ mata-mata)
@@ -78,7 +152,7 @@ function phaseKey(match: Match): string {
 
 /** Rótulo legível de uma chave de fase. */
 function phaseLabel(key: string): string {
-  if (key.startsWith('GROUP_')) return `Rodada ${key.slice(6)}`;
+  if (key.startsWith('GROUP_')) return `Grupos - R${key.slice(6)}`;
   return stageLabel(key);
 }
 
@@ -135,6 +209,7 @@ export function tallyEntry(entry: BolaoEntry, matches: Match[]): EntryTally {
   const tally: EntryTally = {
     total: 0,
     cravou: 0,
+    quaseCravou: 0,
     acertou: 0,
     errou: 0,
     jogosPontuados: 0,
@@ -165,6 +240,7 @@ export function tallyEntry(entry: BolaoEntry, matches: Match[]): EntryTally {
     const pts = scoreGuess(p, match);
     tally.total += pts;
     if (pts === 3) tally.cravou++;
+    else if (pts === 2) tally.quaseCravou++;
     else if (pts === 1) tally.acertou++;
     else tally.errou++;
 
@@ -221,7 +297,7 @@ const KO_KEY_GROUP = 'KO'; // grupo dos jogos sem fase de grupos (mata-mata)
 export interface ScoredGuess {
   match: Match;
   palpite: Palpite;
-  pts: 0 | 1 | 3;
+  pts: 0 | 1 | 2 | 3;
   /** Grupo do jogo (GROUP_x) ou "KO" no mata-mata. */
   group: string;
   /** Chave de fase/rodada ('GROUP_1'.. ou stage do mata-mata), p/ filtrar por fase. */

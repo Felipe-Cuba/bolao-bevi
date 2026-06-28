@@ -14,15 +14,6 @@
   z-index: 60;
 }
 
-.bolao {
-  --b-accent: #16c784;
-  --b-card: #161b26;
-  --b-border: #283042;
-  --b-muted: #8b94a7;
-  --b-red: #ff5470;
-  accent-color: var(--b-accent);
-}
-
 .dialog {
   background: var(--bg, #0f1220);
   border: 1px solid var(--b-border);

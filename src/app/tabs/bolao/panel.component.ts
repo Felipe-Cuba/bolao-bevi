@@ -12,14 +12,12 @@ import {
   LucideCalendarDays,
   LucideChevronDown,
   LucideCrosshair,
-  LucideDownload,
   LucideGrid3x3,
   LucideLayers,
   LucideMedal,
   LucidePencil,
   LucideThumbsUp,
   LucideTrophy,
-  LucideUpload,
   LucideX,
 } from '@lucide/angular';
 
@@ -30,20 +28,14 @@ import {
   ScoredGuess,
   entryBreakdown,
   isScorable,
+  pointsValue,
   rankEntries,
   scoreGuess,
   tallyEntry,
 } from '@shared/utils/bolao-scoring.util';
-import {
-  downloadJson,
-  exportEntries,
-  exportEntry,
-  parseEntries,
-  slugify,
-} from '@shared/utils/bolao-io.util';
-import { BolaoEntry, Palpite } from '@shared/models/bolao.model';
-import { BolaoExportModal } from './components/export-modal/export-modal.component';
+import { Palpite } from '@shared/models/bolao.model';
 import { BolaoDetalheModal } from './components/detail-modal/detail-modal.component';
+import { ShortNamePtPipe } from '@shared/pipes/match-labels.pipes';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
@@ -104,8 +96,8 @@ interface LiveRow {
   realHome: number | null;
   realAway: number | null;
   palpite: Palpite | null;
-  /** Pontos do palpite (0/1/3) ou null se ainda não pontuável. */
-  pts: 0 | 1 | 3 | null;
+  /** Pontos do palpite (0/1/2/3) ou null se ainda não pontuável. */
+  pts: 0 | 1 | 2 | 3 | null;
   ptsLabel: string;
 }
 
@@ -128,8 +120,6 @@ interface NextRow {
     LucideCrosshair,
     LucideThumbsUp,
     LucideX,
-    LucideDownload,
-    LucideUpload,
     LucidePencil,
     LucideMedal,
     LucideChevronDown,
@@ -137,7 +127,8 @@ interface NextRow {
     LucideCalendarDays,
     LucideLayers,
     BolaoDetalheModal,
-  ],
+    ShortNamePtPipe
+],
   templateUrl: './panel.component.html',
   styleUrl: './panel.component.css',
 })
@@ -153,9 +144,6 @@ export class BolaoPanel {
 
   readonly entries = this.store.entries;
   readonly selectedId = signal<string | null>(null);
-
-  /** Feedback do import (sucesso/erro), exibido inline. */
-  readonly feedback = signal<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   constructor() {
     effect(() => {
@@ -176,11 +164,11 @@ export class BolaoPanel {
     return entry ? tallyEntry(entry, this.matches()) : null;
   });
 
-  /** Aproveitamento: % dos jogos pontuados em que marcou algum ponto (cravou + acertou). */
+  /** Aproveitamento: % dos jogos pontuados em que marcou algum ponto (cravou + quase + acertou). */
   readonly hitRate = computed(() => {
     const t = this.tally();
     if (!t || t.jogosPontuados === 0) return 0;
-    return Math.round(((t.cravou + t.acertou) / t.jogosPontuados) * 100);
+    return Math.round(((t.cravou + t.quaseCravou + t.acertou) / t.jogosPontuados) * 100);
   });
 
   /** Heatmap A→L (+ KO se houver): valor por grupo e intensidade relativa ao melhor. */
@@ -195,9 +183,6 @@ export class BolaoPanel {
       heat: 0,
       played: played.has(`GROUP_${l}`),
     }));
-    if (played.has('KO')) {
-      cells.push({ label: 'KO', value: por['KO'] ?? 0, heat: 0, played: true });
-    }
 
     const max = Math.max(0, ...cells.map((c) => c.value));
     if (max > 0) for (const c of cells) c.heat = c.value / max;
@@ -259,23 +244,28 @@ export class BolaoPanel {
   /** Modal de detalhe aberta (título + itens filtrados), ou null. */
   readonly detalhe = signal<{ title: string; items: ScoredGuess[] } | null>(null);
 
-  /** Abre a modal de uma categoria (Cravou/Acertou/Errou). Não abre se vazia. */
-  openCategoria(kind: 'cravou' | 'acertou' | 'errou'): void {
-    const wanted = kind === 'cravou' ? 3 : kind === 'acertou' ? 1 : 0;
+  /** Abre a modal de uma categoria (Cravou/Na trave/Acertou/Errou). Não abre se vazia. */
+  openCategoria(kind: 'cravou' | 'quase' | 'acertou' | 'errou'): void {
+    const wanted = kind === 'cravou' ? 3 : kind === 'quase' ? 2 : kind === 'acertou' ? 1 : 0;
     const items = this.breakdown().filter((g) => g.pts === wanted);
     if (!items.length) return;
-    const title = kind === 'cravou' ? 'Cravou' : kind === 'acertou' ? 'Acertou' : 'Errou';
+    const title =
+      kind === 'cravou'
+        ? 'Cravou'
+        : kind === 'quase'
+          ? 'Na trave (placar exato, errou quem passou)'
+          : kind === 'acertou'
+            ? 'Acertou'
+            : 'Errou';
     this.detalhe.set({ title, items });
   }
 
   /** Abre a modal de um grupo: todos os palpites de jogos já pontuados (acertos e erros).
    *  Não abre se o grupo ainda não tem jogos pontuados. */
   openGrupo(label: string): void {
-    const key = label === 'KO' ? 'KO' : `GROUP_${label}`;
-    const items = this.breakdown().filter((g) => g.group === key);
+    const items = this.breakdown().filter((g) => g.group === `GROUP_${label}`);
     if (!items.length) return;
-    const title = label === 'KO' ? 'Mata-mata' : `Grupo ${label}`;
-    this.detalhe.set({ title, items });
+    this.detalhe.set({ title: `Grupo ${label}`, items });
   }
 
   /** Abre a modal de uma fase/rodada: todos os palpites de jogos já pontuados dela. */
@@ -319,7 +309,7 @@ export class BolaoPanel {
           realAway: hasReal ? (m.score.fullTime.away as number) : null,
           palpite,
           pts,
-          ptsLabel: pts === 3 ? 'Cravou' : pts === 1 ? 'Acertou' : pts === 0 ? 'Errou' : '',
+          ptsLabel: pointsValue(pts),
         };
       });
   });
@@ -378,40 +368,4 @@ export class BolaoPanel {
     this.selectedId.set(id);
   }
 
-  /** Baixa o palpite selecionado como JSON. */
-  exportSelected(): void {
-    const entry = this.selected();
-    if (!entry) return;
-    downloadJson(`bolao-${slugify(entry.name)}.json`, exportEntry(entry));
-  }
-
-  /** Lê o arquivo escolhido, valida e importa para o store. */
-  onImportFile(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const result = parseEntries(String(reader.result ?? ''));
-      if (!result.ok) {
-        this.feedback.set({ kind: 'err', text: result.error });
-        return;
-      }
-      try {
-        const added = await this.store.importEntries(result.entries);
-        if (added[0]) this.selectedId.set(added[0].id);
-        const n = added.length;
-        this.feedback.set({
-          kind: 'ok',
-          text: n === 1 ? 'Palpite importado.' : `${n} palpites importados.`,
-        });
-      } catch (err) {
-        this.feedback.set({ kind: 'err', text: (err as Error).message });
-      }
-    };
-    reader.onerror = () => this.feedback.set({ kind: 'err', text: 'Falha ao ler o arquivo.' });
-    reader.readAsText(file);
-    input.value = ''; // permite reimportar o mesmo arquivo
-  }
 }

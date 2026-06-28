@@ -20,5 +20,8 @@ export const environment = {
   localSeedUrl: 'wc-response-complete.json',
   // Em dev, lê SEMPRE o JSON local. Mude para false para testar via apiUrl.
   useLocalData: true,
+  // DEV ONLY: simula confrontos de mata-mata + permite forçar resultados na tela do Bolão.
+  // Ligado pela configuração "devsim" (npm run start:devsim). TODO: remover.
+  devSimKo: false,
   firebaseConfig,
 };

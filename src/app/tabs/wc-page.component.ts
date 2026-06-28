@@ -13,6 +13,8 @@ import { storageSignal } from 'ngx-oneforall/signals/storage-signal';
 import { breakpointMatcher } from 'ngx-oneforall/signals/breakpoint-matcher';
 import { BREAKPOINT } from 'ngx-oneforall/constants';
 
+import { environment } from '../../environments/environment';
+
 import { GrupoService } from '@core/grupo.service';
 
 import { MatchesApi } from '@core/matches.api';
@@ -24,6 +26,11 @@ import {
   groupMatches,
 } from '@shared/utils/match-derivations.util';
 import { buildBracketTree } from '@shared/utils/bracket-tree.util';
+import {
+  withSimulatedKnockout,
+  withDevResults,
+  DevResults,
+} from '@shared/utils/dev-sim-knockout.util';
 import {
   LucideTrophy,
   LucideLayoutDashboard,
@@ -46,6 +53,8 @@ import { ScorersTable } from './scorers/scorers.component';
 import { BolaoModal } from './bolao/components/entry-modal/entry-modal.component';
 import { BolaoPanel } from './bolao/panel.component';
 import { GrupoModal } from './bolao/components/grupo-modal/grupo-modal.component';
+import { DevResultsModal } from './bolao/components/dev-results-modal/dev-results-modal.component';
+import { StatusLabelPipe, GroupShortLabelPipe } from '@shared/pipes/match-labels.pipes';
 
 type Tab = 'highlights' | 'matches' | 'standings' | 'scorers' | 'bracket' | 'bolao';
 
@@ -56,6 +65,11 @@ interface Filters {
 }
 
 const DEFAULT_FILTERS: Filters = { tab: 'highlights', status: 'ALL', group: 'ALL' };
+
+// DEV ONLY: simula os confrontos de mata-mata e habilita forçar resultados na tela do
+// Bolão. Controlado pelo environment (configuração "devsim" → npm run start:devsim), não por
+// edição de código. `false` em dev/prod normais. TODO: remover quando os jogos forem reais.
+const DEV_SIM_KO = environment.devSimKo;
 
 @Component({
   selector: 'app-wc-page',
@@ -69,6 +83,7 @@ const DEFAULT_FILTERS: Filters = { tab: 'highlights', status: 'ALL', group: 'ALL
     BolaoModal,
     BolaoPanel,
     GrupoModal,
+    DevResultsModal,
     LucideTrophy,
     LucideLayoutDashboard,
     LucideListOrdered,
@@ -80,6 +95,8 @@ const DEFAULT_FILTERS: Filters = { tab: 'highlights', status: 'ALL', group: 'ALL
     LucideLogOut,
     LucideTarget,
     LucideGitFork,
+    StatusLabelPipe,
+    GroupShortLabelPipe,
   ],
   templateUrl: './wc-page.component.html',
   styleUrl: './wc-page.component.css',
@@ -201,6 +218,38 @@ export class WcPage {
   );
   readonly groups = computed(() => distinctGroups(this.matches()));
 
+  /** DEV ONLY: expõe a flag para o template (mostra o botão de editar resultados). */
+  readonly devSimKo = DEV_SIM_KO;
+
+  /** DEV ONLY: resultados "reais" forçados só no front (matchId → placar/quem passa). */
+  readonly devResults = signal<DevResults>(new Map());
+  readonly devResultsOpen = signal(false);
+
+  openDevResults(): void {
+    this.devResultsOpen.set(true);
+  }
+  closeDevResults(): void {
+    this.devResultsOpen.set(false);
+  }
+  applyDevResults(results: DevResults): void {
+    this.devResults.set(results);
+  }
+
+  /**
+   * Jogos passados à modal do Bolão. Em produção é `matches()`. Em DEV (DEV_SIM_KO):
+   *  1) aplica os resultados forçados de GRUPO (IDs reais) sobre `matches` → muda a
+   *     classificação e, com ela, quem avança aos 16-avos;
+   *  2) simula o mata-mata, passando os MESMOS resultados forçados (os de mata-mata usam IDs
+   *     sintéticos, 73..104) p/ definir placar/winner dos confrontos e guiar a cascata.
+   * TODO: remover.
+   */
+  readonly bolaoMatches = computed<Match[]>(() => {
+    if (!DEV_SIM_KO) return this.matches();
+    const results = this.devResults();
+    const forced = withDevResults(this.matches(), results);
+    return withSimulatedKnockout(forced, results);
+  });
+
   readonly statusOptions: (MatchStatus | 'ALL')[] = [
     'ALL',
     MatchStatus.TIMED,
@@ -255,17 +304,4 @@ export class WcPage {
     this.bolaoOpen.set(false);
   }
 
-  groupShortLabel(group: string): string {
-    return group.replace('GROUP_', 'Grupo ');
-  }
-
-  statusLabel(status: MatchStatus | 'ALL'): string {
-    const labels: Record<string, string> = {
-      ALL: 'Todos',
-      [MatchStatus.TIMED]: 'Agendado',
-      [MatchStatus.IN_PLAY]: 'Ao vivo',
-      [MatchStatus.FINISHED]: 'Encerrado',
-    };
-    return labels[status] ?? status;
-  }
 }

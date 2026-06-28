@@ -1,0 +1,142 @@
+<div class="backdrop" (click)="onBackdrop($event)">
+  <div class="dialog bolao" role="dialog" aria-modal="true" aria-label="DEV — resultados">
+    <header class="head">
+      <h2 class="head__title">
+        <svg lucideFlaskConical class="head__icon" [size]="20"></svg> DEV · Resultados (só no front)
+      </h2>
+      <button class="icon-btn" (click)="close.emit()" aria-label="Fechar">
+        <svg lucideX [size]="18"></svg>
+      </button>
+    </header>
+
+    <p class="dev-note">
+      Edite o placar “real” dos jogos para testar a pontuação. Nada é salvo no banco — só
+      altera o cálculo nesta sessão.
+    </p>
+
+    <!-- Abas por fase -->
+    @if (phases().length > 1) {
+      <nav class="stages" aria-label="Fases">
+        @for (p of phases(); track p.stage) {
+          <button
+            class="stage"
+            [class.stage--active]="p.stage === activeStage()"
+            (click)="setStage(p.stage)"
+          >
+            {{ p.label }}
+          </button>
+        }
+      </nav>
+    }
+
+    <!-- Lista de jogos da fase ativa -->
+    <div class="form">
+      @for (g of groups(); track g.key) {
+        <section class="group">
+          @if (isGroupStage()) {
+            <h3 class="group__sep">{{ g.label }}</h3>
+          }
+          @for (m of g.matches; track m.id) {
+            @let line = draft().get(m.id);
+            @let editable = m | canEdit;
+            @let ko = m | isKnockout;
+            @let adv = draftAdvances(line);
+            @let forced = !!line && line.home !== null && line.away !== null;
+            <div class="row" [class.row--done]="forced" [class.row--locked]="!editable">
+              <span class="row__stripe" [class.row__stripe--on]="forced"></span>
+
+              <span class="team team--home">
+                <span class="team__name">{{ m.homeTeam | teamName }}</span>
+                @if (m.homeTeam | isPlaceholder) {
+                  <svg lucideShieldOff class="team__crest team__crest--ph" [size]="22"></svg>
+                } @else {
+                  <img class="team__crest" [src]="m.homeTeam | teamCrest" [alt]="m.homeTeam | teamName" loading="lazy" />
+                }
+              </span>
+
+              <span class="guess">
+                <input
+                  class="score"
+                  type="number"
+                  min="0"
+                  inputmode="numeric"
+                  [disabled]="!editable"
+                  [value]="line?.home ?? null"
+                  (input)="setScore(m.id, 'home', $any($event.target).value)"
+                />
+                <span class="guess__x">×</span>
+                <input
+                  class="score"
+                  type="number"
+                  min="0"
+                  inputmode="numeric"
+                  [disabled]="!editable"
+                  [value]="line?.away ?? null"
+                  (input)="setScore(m.id, 'away', $any($event.target).value)"
+                />
+              </span>
+
+              <span class="team team--away">
+                @if (m.awayTeam | isPlaceholder) {
+                  <svg lucideShieldOff class="team__crest team__crest--ph" [size]="22"></svg>
+                } @else {
+                  <img class="team__crest" [src]="m.awayTeam | teamCrest" [alt]="m.awayTeam | teamName" loading="lazy" />
+                }
+                <span class="team__name">{{ m.awayTeam | teamName }}</span>
+              </span>
+
+              <span class="result">
+                @if (!editable) {
+                  <span class="result__locked" title="Confronto ainda não definido">
+                    <svg lucideShieldOff [size]="16"></svg>
+                  </span>
+                } @else {
+                  <button type="button" class="result__rnd" (click)="randomizeOne(m.id)"
+                    title="Randomizar este placar">R</button>
+                  @if (forced) {
+                    <button type="button" class="result__clear" (click)="clearScore(m.id)"
+                      title="Remover resultado forçado">
+                      <svg lucideX [size]="14"></svg>
+                    </button>
+                  }
+                }
+              </span>
+
+              <!-- Mata-mata empatado: quem passa -->
+              @if (ko && editable && isDrawLine(line)) {
+                <div class="advance">
+                  <span class="advance__label">Quem passa?</span>
+                  <div class="advance__opts">
+                    <button type="button" class="advance__opt" [class.advance__opt--on]="adv === 'HOME'"
+                      (click)="setAdvances(m.id, 'HOME')" [title]="m.homeTeam | teamName">
+                      <img class="advance__crest" [src]="m.homeTeam | teamCrest" [alt]="m.homeTeam | teamName" loading="lazy" />
+                      <span class="advance__name">{{ m.homeTeam | teamName }}</span>
+                    </button>
+                    <button type="button" class="advance__opt" [class.advance__opt--on]="adv === 'AWAY'"
+                      (click)="setAdvances(m.id, 'AWAY')" [title]="m.awayTeam | teamName">
+                      <img class="advance__crest" [src]="m.awayTeam | teamCrest" [alt]="m.awayTeam | teamName" loading="lazy" />
+                      <span class="advance__name">{{ m.awayTeam | teamName }}</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+    </div>
+
+    <footer class="foot">
+      <div class="foot__left">
+        <button class="btn btn--danger" (click)="clearAll()">Limpar tudo</button>
+        <button class="btn" (click)="randomize()" title="Preencher tudo com placares aleatórios">
+          🎲 Randomizar
+        </button>
+      </div>
+      <div class="foot__right">
+        <button class="btn" (click)="close.emit()">Cancelar</button>
+        <button class="btn btn--primary" (click)="applyResults()">Aplicar</button>
+      </div>
+    </footer>
+  </div>
+</div>
