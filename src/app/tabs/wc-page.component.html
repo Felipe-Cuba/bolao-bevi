@@ -132,7 +132,7 @@
             Status
             <select [value]="filters().status" (change)="setStatus($any($event.target).value)">
               @for (s of statusOptions; track s) {
-                <option [value]="s">{{ statusLabel(s) }}</option>
+                <option [value]="s">{{ s | statusLabel }}</option>
               }
             </select>
           </label>
@@ -142,7 +142,7 @@
             <select [value]="filters().group" (change)="setGroup($any($event.target).value)">
               <option value="ALL">Todos</option>
               @for (g of groups(); track g) {
-                <option [value]="g">{{ groupShortLabel(g) }}</option>
+                <option [value]="g">{{ g | groupShortLabel }}</option>
               }
             </select>
           </label>
@@ -227,13 +227,25 @@
         }
       }
       @case ('bolao') {
-        <app-bolao-panel [matches]="matches()" (openModal)="openBolaoAt($event)" />
+        <app-bolao-panel [matches]="bolaoMatches()" (openModal)="openBolaoAt($event)" />
+        @if (devSimKo) {
+          <button type="button" class="dev-fab" (click)="openDevResults()"
+            title="DEV: editar resultados (só no front)">
+            🧪 Resultados (dev)
+          </button>
+        }
       }
     }
   }
 
   @if (bolaoOpen()) {
-    <app-bolao-modal [matches]="matches()" [initialId]="bolaoInitialId()" (close)="closeBolao()" />
+    <app-bolao-modal [matches]="bolaoMatches()" [initialId]="bolaoInitialId()" [dev]="devSimKo"
+      (close)="closeBolao()" />
+  }
+
+  @if (devSimKo && devResultsOpen()) {
+    <app-dev-results-modal [matches]="bolaoMatches()" [results]="devResults()"
+      (apply)="applyDevResults($event)" (close)="closeDevResults()" />
   }
 
   @if (grupoModalOpen()) {

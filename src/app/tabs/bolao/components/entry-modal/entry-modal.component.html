@@ -13,28 +13,18 @@
     <!-- Seletor de palpites: chips dos existentes + criar novo / importar -->
     <div class="picker">
       @if (entries().length) {
-        <div class="picker__chips">
-          @for (e of entries(); track e.id) {
-            <button
-              class="chip"
-              [class.chip--active]="e.id === activeId()"
-              (click)="selectEntry(e.id)"
-            >
-              {{ e.name }}
-            </button>
-          }
-        </div>
+      <div class="picker__chips">
+        @for (e of entries(); track e.id) {
+        <button class="chip" [class.chip--active]="e.id === activeId()" (click)="selectEntry(e.id)">
+          {{ e.name }}
+        </button>
+        }
+      </div>
       }
 
       <div class="picker__new">
-        <input
-          class="field"
-          type="text"
-          placeholder="Nome do novo palpite (ex.: Dsintech palpites)"
-          [value]="newName()"
-          (input)="newName.set($any($event.target).value)"
-          (keyup.enter)="createEntry()"
-        />
+        <input class="field" type="text" placeholder="Nome do novo palpite (ex.: Dsintech palpites)" [value]="newName()"
+          (input)="newName.set($any($event.target).value)" (keyup.enter)="createEntry()" />
         <button class="btn" (click)="createEntry()" [disabled]="!newName().trim()">
           <svg lucidePlus [size]="16"></svg> Novo
         </button>
@@ -42,138 +32,163 @@
           <svg lucideUpload [size]="16"></svg> Importar
           <input type="file" accept="application/json,.json" hidden (change)="onImportFile($event)" />
         </label>
+        <button class="btn" (click)="exportActive()" [disabled]="!activeEntry()" title="Exportar JSON">
+          <svg lucideDownload [size]="16"></svg> Exportar
+        </button>
       </div>
 
       @if (feedback(); as fb) {
-        <p class="feedback" [class.feedback--err]="fb.kind === 'err'">{{ fb.text }}</p>
+      <p class="feedback" [class.feedback--err]="fb.kind === 'err'">{{ fb.text }}</p>
       }
     </div>
 
     @if (activeEntry(); as entry) {
-      <!-- Nome editável do palpite em edição -->
-      <div class="rename">
-        <label class="rename__label" for="bolao-entry-name">Nome do palpite</label>
-        <input
-          id="bolao-entry-name"
-          class="field rename__input"
-          type="text"
-          maxlength="40"
-          placeholder="Nome do palpite"
-          [value]="editName()"
-          (input)="editName.set($any($event.target).value)"
-          (keyup.enter)="save()"
-        />
-      </div>
-
-      <!-- Abas por fase (Grupos | Oitavas | Quartas | …) -->
-      @if (phases().length > 1) {
-        <nav class="stages" aria-label="Fases">
-          @for (p of phases(); track p.stage) {
-            <button
-              class="stage"
-              [class.stage--active]="p.stage === activeStage()"
-              (click)="setStage(p.stage)"
-            >
-              {{ p.label }}
-            </button>
-          }
-        </nav>
-      }
-
-      <!-- Lista de jogos da fase ativa -->
-      <div class="form">
-        @for (g of groups(); track g.key) {
-          <section class="group">
-            @if (isGroupStage()) {
-              <h3 class="group__sep">{{ g.label }}</h3>
-            }
-            @for (m of g.matches; track m.id) {
-              @let line = draft().get(m.id);
-              @let editable = m | canEdit;
-              @let pts = m | livePoints: line;
-              <div class="row" [class.row--done]="m | isScorable" [class.row--locked]="!editable">
-                <span class="row__stripe" [attr.data-pts]="pts"></span>
-
-                <span class="team team--home">
-                  <span class="team__name">{{ m.homeTeam | teamName }}</span>
-                  @if (m.homeTeam | isPlaceholder) {
-                    <svg lucideShieldOff class="team__crest team__crest--ph" [size]="22"></svg>
-                  } @else {
-                    <img class="team__crest" [src]="m.homeTeam | teamCrest" [alt]="m.homeTeam | teamName" loading="lazy" />
-                  }
-                </span>
-
-                <span class="guess">
-                  <input
-                    class="score"
-                    type="number"
-                    min="0"
-                    inputmode="numeric"
-                    [disabled]="!editable"
-                    [value]="line?.home ?? null"
-                    (input)="setScore(m.id, 'home', $any($event.target).value)"
-                  />
-                  <span class="guess__x">×</span>
-                  <input
-                    class="score"
-                    type="number"
-                    min="0"
-                    inputmode="numeric"
-                    [disabled]="!editable"
-                    [value]="line?.away ?? null"
-                    (input)="setScore(m.id, 'away', $any($event.target).value)"
-                  />
-                </span>
-
-                <span class="team team--away">
-                  @if (m.awayTeam | isPlaceholder) {
-                    <svg lucideShieldOff class="team__crest team__crest--ph" [size]="22"></svg>
-                  } @else {
-                    <img class="team__crest" [src]="m.awayTeam | teamCrest" [alt]="m.awayTeam | teamName" loading="lazy" />
-                  }
-                  <span class="team__name">{{ m.awayTeam | teamName }}</span>
-                </span>
-
-                <span class="result">
-                  @if (!editable) {
-                    <span class="result__locked" title="Confronto ainda não definido">
-                      <svg lucideShieldOff [size]="16"></svg>
-                    </span>
-                  } @else {
-                    @if (pts !== null) {
-                      <span class="result__pts" [attr.data-pts]="pts">
-                        {{ pts === 0 ? '0' : '+' + pts }}
-                      </span>
-                    }
-                    @if (m | realScore; as rs) {
-                      <span class="result__real" title="Resultado real">{{ rs }}</span>
-                    } @else {
-                      <span class="result__real result__real--pending">—</span>
-                    }
-                  }
-                </span>
-              </div>
-            }
-          </section>
-        }
-      </div>
-
-      <!-- Rodapé com ações -->
-      <footer class="foot">
-        <button class="btn btn--danger" (click)="removeActive()">
-          <svg lucideTrash2 [size]="16"></svg> Excluir
+    <!-- Nome editável do palpite + switch de edição -->
+    <div class="rename">
+      <label class="rename__label" for="bolao-entry-name">Nome do palpite</label>
+      <div class="rename__row">
+        <input id="bolao-entry-name" class="field rename__input" type="text" maxlength="40"
+          placeholder="Nome do palpite" [value]="editName()"
+          (input)="editName.set($any($event.target).value)" (keyup.enter)="save()" />
+        <button type="button" class="switch" role="switch" [attr.aria-checked]="editing()"
+          [class.switch--on]="editing()" (click)="toggleEditing()"
+          [title]="editing() ? 'Bloquear edição' : 'Editar palpites'">
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+          <span class="switch__label">Editar</span>
         </button>
-        <div class="foot__right">
-          <button class="btn" (click)="close.emit()">Cancelar</button>
-          <button class="btn btn--primary" (click)="save()" [disabled]="!editName().trim()">
-            <svg lucideSave [size]="16"></svg> Salvar
-          </button>
-        </div>
-      </footer>
-    } @else {
-      <div class="empty">
-        <p>Crie um palpite para começar a registrar seus placares.</p>
       </div>
+    </div>
+
+    <!-- Abas por fase (Grupos | Oitavas | Quartas | …) -->
+    @if (phases().length > 1) {
+    <nav class="stages" aria-label="Fases">
+      @for (p of phases(); track p.stage) {
+      <button class="stage" [class.stage--active]="p.stage === activeStage()" (click)="setStage(p.stage)">
+        {{ p.label }}
+      </button>
+      }
+    </nav>
+    }
+
+    <!-- Lista de jogos da fase ativa -->
+    <div class="form">
+      @for (g of groups(); track g.key) {
+      <section class="group">
+        @if (isGroupStage()) {
+        <h3 class="group__sep">{{ g.label }}</h3>
+        }
+        @for (m of g.matches; track m.id) {
+        @let line = draft().get(m.id);
+        @let editable = m | canEdit;
+        @let pts = m | livePoints: line;
+        @let ko = m | isKnockout;
+        @let scorable = m | isScorable;
+        @let chosen = draftAdvances(line);
+        @let realSide = m | realAdvancesSide;
+        <div class="match" [class.match--done]="scorable" [class.match--locked]="!editable"
+          [class.match--needs-adv]="editing() && needsAdvances(m, line)">
+          <div class="row">
+            <span class="row__stripe" [attr.data-pts]="pts"></span>
+
+            <span class="team team--home" [attr.data-pts]="realSide === 'HOME' ? pts : null"
+              [class.team--chosen]="!editing() && !scorable && chosen === 'HOME'">
+              <span class="team__name">{{ m.homeTeam | teamName }}</span>
+              @if (m.homeTeam | isPlaceholder) {
+              <svg lucideShieldOff class="team__crest team__crest--ph" [size]="22"></svg>
+              } @else {
+              <img class="team__crest" [src]="m.homeTeam | teamCrest" [alt]="m.homeTeam | teamName" loading="lazy" />
+              }
+            </span>
+
+            <span class="guess">
+              <input class="score" type="number" min="0" inputmode="numeric"
+                [disabled]="!editable || !editing()"
+                [value]="line?.home ?? null" (input)="setScore(m.id, 'home', $any($event.target).value)" />
+              <span class="guess__x">×</span>
+              <input class="score" type="number" min="0" inputmode="numeric"
+                [disabled]="!editable || !editing()"
+                [value]="line?.away ?? null" (input)="setScore(m.id, 'away', $any($event.target).value)" />
+            </span>
+
+            <span class="team team--away" [attr.data-pts]="realSide === 'AWAY' ? pts : null"
+              [class.team--chosen]="!editing() && !scorable && chosen === 'AWAY'">
+              @if (m.awayTeam | isPlaceholder) {
+              <svg lucideShieldOff class="team__crest team__crest--ph" [size]="22"></svg>
+              } @else {
+              <img class="team__crest" [src]="m.awayTeam | teamCrest" [alt]="m.awayTeam | teamName" loading="lazy" />
+              }
+              <span class="team__name">{{ m.awayTeam | teamName }}</span>
+            </span>
+
+            <span class="result">
+              @if (!editable) {
+              <span class="result__locked" title="Confronto ainda não definido">
+                <svg lucideShieldOff [size]="16"></svg>
+              </span>
+              } @else {
+              @if (dev() && line && (line.home !== null || line.away !== null)) {
+              <button type="button" class="result__clear" (click)="clearScore(m.id)"
+                title="DEV: zerar este palpite">0</button>
+              }
+              @if (pts !== null) {
+              <span class="result__pts" [attr.data-pts]="pts" [title]="pts | ptsLabel">
+                {{ pts | ptsLabel }}
+              </span>
+              }
+              }
+            </span>
+          </div>
+
+          <!-- Resultado real do jogo (placar), quando já pontuável. -->
+          @if (editable && scorable) {
+          <div class="real">
+            <span class="real__label">Real:</span>
+            <span class="real__score">{{ m | realScore }}</span>
+          </div>
+          }
+
+          <!-- Mata-mata: "quem passa" só no modo edição e em EMPATE (placar não-empate define sozinho). -->
+          @if (ko && editable && editing() && isDrawLine(line)) {
+          <div class="advance">
+            <span class="advance__label">Quem passa?</span>
+            <div class="advance__opts">
+              <button type="button" class="advance__opt" [class.advance__opt--on]="chosen === 'HOME'"
+                (click)="setAdvances(m.id, 'HOME')" [title]="m.homeTeam | teamName">
+                <img class="advance__crest" [src]="m.homeTeam | teamCrest" [alt]="m.homeTeam | teamName"
+                  loading="lazy" />
+                <span class="advance__name">{{ m.homeTeam | teamName }}</span>
+              </button>
+              <button type="button" class="advance__opt" [class.advance__opt--on]="chosen === 'AWAY'"
+                (click)="setAdvances(m.id, 'AWAY')" [title]="m.awayTeam | teamName">
+                <img class="advance__crest" [src]="m.awayTeam | teamCrest" [alt]="m.awayTeam | teamName"
+                  loading="lazy" />
+                <span class="advance__name">{{ m.awayTeam | teamName }}</span>
+              </button>
+            </div>
+          </div>
+          }
+        </div>
+        }
+      </section>
+      }
+    </div>
+
+    <!-- Rodapé com ações -->
+    <footer class="foot">
+      <button class="btn btn--danger" (click)="removeActive()">
+        <svg lucideTrash2 [size]="16"></svg> Excluir
+      </button>
+      <div class="foot__right">
+        <button class="btn" (click)="close.emit()">Cancelar</button>
+        <button class="btn btn--primary" (click)="save()" [disabled]="!editName().trim()">
+          <svg lucideSave [size]="16"></svg> Salvar
+        </button>
+      </div>
+    </footer>
+    } @else {
+    <div class="empty">
+      <p>Crie um palpite para começar a registrar seus placares.</p>
+    </div>
     }
   </div>
 </div>

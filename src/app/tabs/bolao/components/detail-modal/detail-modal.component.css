@@ -14,19 +14,6 @@
   z-index: 60;
 }
 
-/* Skin do Bolão */
-.bolao {
-  --b-accent: #16c784;
-  --b-accent-2: #f5c518;
-  --b-card: #161b26;
-  --b-card-2: #1d2433;
-  --b-border: #283042;
-  --b-muted: #8b94a7;
-  --b-red: #ff5470;
-  --b-blue: #4f8cff;
-  accent-color: var(--b-accent);
-}
-
 .dialog {
   background: var(--bg, #0f1220);
   border: 1px solid var(--b-border);
@@ -121,6 +108,21 @@
   justify-content: flex-end;
 }
 
+/* Só o vencedor REAL do confronto recebe a cor do acerto do palpite (mesma escala da modal
+   de palpites: cravou/na trave/acertou/errou). */
+.drow__team[data-pts='3'] {
+  color: var(--b-accent);
+}
+.drow__team[data-pts='2'] {
+  color: var(--b-amber);
+}
+.drow__team[data-pts='1'] {
+  color: var(--b-teal);
+}
+.drow__team[data-pts='0'] {
+  color: var(--b-red);
+}
+
 .drow__crest {
   width: 18px;
   height: 18px;
@@ -148,19 +150,23 @@
   min-width: 1.9rem;
   text-align: center;
   font-weight: 800;
-  font-size: 0.8rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 0.5rem;
-  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .drow__pts[data-pts="3"] {
   color: #04140d;
   background: var(--b-accent);
 }
+.drow__pts[data-pts="2"] {
+  color: #2b1a00;
+  background: var(--b-amber);
+}
 .drow__pts[data-pts="1"] {
   color: #04140d;
-  background: var(--b-blue);
+  background: var(--b-teal);
 }
 .drow__pts[data-pts="0"] {
   color: #fff;

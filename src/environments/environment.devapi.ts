@@ -20,5 +20,6 @@ export const environment = {
   scorersApiUrl: '/api/scorers',
   localSeedUrl: 'wc-response-complete.json',
   useLocalData: false,
+  devSimKo: false,
   firebaseConfig,
 };

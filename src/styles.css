@@ -114,6 +114,27 @@ option {
   color: var(--text, #e8ecf4);
 }
 
+/* ── Skin do Bolão (tokens locais sobre o tema global) ─────────────────────── */
+/* Fonte ÚNICA dos tokens do bolão. Aplicada via class `.bolao` no elemento raiz de
+   cada componente do bolão; como é classe simples, a regra global alcança o conteúdo
+   mesmo com encapsulation Emulated. Antes estava duplicada (e divergente) em 6 CSS. */
+.bolao {
+  --b-accent: #16c784;
+  --b-accent-2: #f5c518;
+  --b-blue: #4f8cff;
+  --b-orange: #f57c00;
+  /* Escala de acerto do palpite: Cravou=accent(verde) · Na trave=amber · Acertou=teal · Errou=red */
+  --b-amber: #f5a524;
+  --b-teal: #2dd4bf;
+  --b-card: #161b26;
+  --b-card-2: #1d2433;
+  --b-border: #283042;
+  --b-muted: #8b94a7;
+  --b-red: var(--live, #ff4d4f);
+  --b-radius: 14px;
+  accent-color: var(--b-accent);
+}
+
 /* ── Utilitários compartilhados ───────────────────────────────────────────── */
 /* Reaproveitados por várias abas/componentes. Como styles.css é global, estas
    classes valem em qualquer template sem precisar reimportar. */

@@ -443,3 +443,24 @@
     padding: 0.55rem 0.6rem;
   }
 }
+
+/* DEV ONLY: botão flutuante para abrir a modal de resultados forçados. TODO: remover. */
+.dev-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 40;
+  background: #f5c518;
+  color: #2b2300;
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.5);
+}
+
+.dev-fab:hover {
+  filter: brightness(1.05);
+}

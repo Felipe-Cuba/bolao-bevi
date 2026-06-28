@@ -2,20 +2,6 @@
   display: block;
 }
 
-/* ── Skin própria do Bolão (sobre a base dark do app) ───────────────────── */
-.bolao {
-  --b-accent: #16c784;
-  --b-accent-2: #f5c518;
-  --b-card: #161b26;
-  --b-card-2: #1d2433;
-  --b-border: #283042;
-  --b-radius: 14px;
-  --b-muted: #8b94a7;
-  --b-red: #ff5470;
-  --b-blue: #4f8cff;
-  accent-color: var(--b-accent);
-}
-
 .panel {
   display: flex;
   flex-direction: column;
@@ -133,23 +119,6 @@
   color: var(--b-accent);
 }
 
-/* ── Feedback de import ─────────────────────────────────────────────────── */
-.feedback {
-  margin: 0;
-  padding: 0.55rem 0.8rem;
-  border-radius: 0.6rem;
-  font-size: 0.82rem;
-  background: color-mix(in srgb, var(--b-accent) 16%, transparent);
-  color: var(--b-accent);
-  border: 1px solid color-mix(in srgb, var(--b-accent) 40%, transparent);
-}
-
-.feedback--err {
-  background: color-mix(in srgb, var(--b-red) 14%, transparent);
-  color: #ff8a9c;
-  border-color: color-mix(in srgb, var(--b-red) 40%, transparent);
-}
-
 /* ── Hero: total + aproveitamento ───────────────────────────────────────── */
 .hero {
   display: grid;
@@ -244,6 +213,11 @@
   gap: 0.6rem;
 }
 
+/* Com 4 categorias (inclui "Na trave"), 3 colunas deixariam o 4º card sozinho — usa 2×2. */
+.tiers--four {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .tier {
   display: grid;
   justify-items: center;
@@ -274,8 +248,11 @@
 .tier--cravou {
   --tier-c: var(--b-accent);
 }
+.tier--quase {
+  --tier-c: var(--b-amber);
+}
 .tier--acertou {
-  --tier-c: var(--b-blue);
+  --tier-c: var(--b-teal);
 }
 .tier--errou {
   --tier-c: var(--b-red);
@@ -748,7 +725,8 @@
 }
 
 .lrow__guess[data-pts="3"] { color: var(--b-accent); }
-.lrow__guess[data-pts="1"] { color: var(--b-blue); }
+.lrow__guess[data-pts="2"] { color: var(--b-amber); }
+.lrow__guess[data-pts="1"] { color: var(--b-teal); }
 .lrow__guess[data-pts="0"] { color: var(--b-red); }
 
 /* ── Mobile ─────────────────────────────────────────────────────────────── */

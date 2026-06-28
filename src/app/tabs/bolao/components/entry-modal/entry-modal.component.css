@@ -2,18 +2,6 @@
   display: block;
 }
 
-/* ── Skin do Bolão (tokens locais sobre o tema global) ──────────────────────── */
-.bolao {
-  --b-accent: #16c784;
-  --b-accent-2: #f5c518;
-  --b-card: #161b26;
-  --b-card-2: #1d2433;
-  --b-border: #283042;
-  --b-muted: #8b94a7;
-  --b-red: var(--live, #ff4d4f);
-  accent-color: var(--b-accent);
-}
-
 /* ── Overlay + diálogo ──────────────────────────────────────────────────────── */
 .backdrop {
   position: fixed;
@@ -221,10 +209,67 @@
   color: var(--b-muted);
 }
 
+.rename__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .rename__input {
-  flex: none;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   font-weight: 700;
+}
+
+/* ── Switch de edição (liga/desliga a edição de placares e "quem passa") ─────── */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  color: var(--b-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.switch__track {
+  position: relative;
+  width: 2.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: var(--b-card-2);
+  border: 1px solid var(--b-border);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.switch__thumb {
+  position: absolute;
+  top: 50%;
+  left: 0.15rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--b-muted);
+  transform: translateY(-50%);
+  transition: left 0.15s ease, background 0.15s ease;
+}
+
+.switch--on {
+  color: var(--b-accent);
+}
+
+.switch--on .switch__track {
+  background: color-mix(in srgb, var(--b-accent) 30%, var(--b-card-2));
+  border-color: var(--b-accent);
+}
+
+.switch--on .switch__thumb {
+  left: calc(100% - 1rem);
+  background: var(--b-accent);
 }
 
 /* ── Abas de fase ───────────────────────────────────────────────────────────── */
@@ -285,29 +330,72 @@
   color: var(--b-accent);
 }
 
-.row {
+/* Contêiner de um jogo: a linha de placar + (opcional) resultado real + "quem passa".
+   É o âncora (relative) da faixa lateral colorida e da badge de resultado — ambas absolutas,
+   cobrindo/centralizando na ALTURA TOTAL do jogo (placar + "Real:"). Os paddings reservam o
+   espaço dessas duas (esquerda = faixa, direita = badge). */
+.match {
   position: relative;
-  display: grid;
-  /* stripe | time casa | palpite | time visitante | resultado (largura fixa) */
-  grid-template-columns: 4px 1fr auto 1fr 5.25rem;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0 0.5rem 0.6rem;
+  padding: 0.4rem 5.9rem 0.4rem 0.9rem;
   border-bottom: 1px solid color-mix(in srgb, var(--b-border) 50%, transparent);
 }
 
-.row--done {
+.match--done {
   opacity: 0.92;
 }
 
-/* Confronto ainda não definido (placeholder): linha esmaecida, sem edição. */
-.row--locked {
+/* Confronto ainda não definido (placeholder): jogo esmaecido, sem edição. */
+.match--locked {
   opacity: 0.5;
 }
 
-/* Faixa lateral colorida conforme os pontos do palpite. */
+/* Resultado real do jogo (linha 2, centralizada sob o placar). */
+.real {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+}
+
+.real__label {
+  color: var(--b-muted);
+}
+
+.real__score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #e8ecf4);
+}
+
+.real__adv {
+  color: var(--b-muted);
+}
+
+.real__adv::before {
+  content: '·';
+  margin-right: 0.4rem;
+}
+
+.row {
+  display: grid;
+  /* time casa | palpite | time visitante. A faixa colorida e a badge de resultado são
+     ABSOLUTAS no .match (fora do grid) — assim o placar fica centralizado e o "Quem passa?"
+     / "Real:" (abaixo) alinham pelo mesmo eixo. */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Faixa lateral colorida (pts do palpite), ABSOLUTA: cobre a altura TOTAL do jogo. */
 .row__stripe {
-  align-self: stretch;
+  position: absolute;
+  left: 0;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  width: 4px;
   border-radius: 999px;
   background: transparent;
 }
@@ -315,8 +403,11 @@
 .row__stripe[data-pts='3'] {
   background: linear-gradient(180deg, #2bf0a5, var(--b-accent));
 }
+.row__stripe[data-pts='2'] {
+  background: linear-gradient(180deg, #ffc55c, var(--b-amber));
+}
 .row__stripe[data-pts='1'] {
-  background: linear-gradient(180deg, #ffe066, var(--b-accent-2));
+  background: linear-gradient(180deg, #6ee7d6, var(--b-teal));
 }
 .row__stripe[data-pts='0'] {
   background: linear-gradient(180deg, #ff7a7c, var(--b-red));
@@ -341,6 +432,34 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* No mata-mata, só o nome do time que PASSOU recebe a cor do acerto do palpite
+   (cravou/na trave/acertou/errou). Nos grupos nenhum nome é colorido (sem data-pts). */
+.team[data-pts='3'] .team__name {
+  color: var(--b-accent);
+}
+.team[data-pts='2'] .team__name {
+  color: var(--b-amber);
+}
+.team[data-pts='1'] .team__name {
+  color: var(--b-teal);
+}
+.team[data-pts='0'] .team__name {
+  color: var(--b-red);
+}
+
+/* Modo LEITURA (switch off) e jogo AINDA não pontuável: time escolhido pelo palpite
+   (vencedor cravado nos grupos / quem passa no mata-mata) em lavanda claro com sublinhado —
+   realce neutro, fora da escala de cores. Quando o jogo finaliza, a escala (badge/stripe)
+   assume e este realce some. */
+.team--chosen .team__name {
+  color: #dcc7fe; /* lavanda claro: destaca sem o brilho do branco puro */
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--b-accent);
 }
 
 .team__crest {
@@ -397,11 +516,17 @@
   margin: 0;
 }
 
-/* ── Resultado (pontos ao vivo + placar real) ───────────────────────────────── */
+/* ── Resultado (badge "+N Rótulo") — ABSOLUTO, centralizado na faixa reservada à direita
+   e na ALTURA TOTAL do jogo (placar + "Real:"). ──────────────────────────────────────── */
 .result {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 5.9rem;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.4rem;
 }
 
@@ -412,38 +537,114 @@
   color: var(--b-muted);
 }
 
-.result__pts {
-  font-size: 0.72rem;
+/* DEV: botão "zerar" o palpite de um jogo (some em produção — só com dev habilitado). */
+.result__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: var(--b-card-2);
+  border: 1px solid var(--b-border);
+  border-radius: 0.5rem;
+  color: var(--b-red);
   font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  padding: 0.05rem 0.35rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.result__clear:hover {
+  border-color: var(--b-red);
+}
+
+/* Badge do rótulo do palpite: +3 Cravou / +2 Na trave / +1 Acertou / 0 Errou. */
+.result__pts {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  line-height: 1.4;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .result__pts[data-pts='3'] {
   color: #04140d;
   background: var(--b-accent);
 }
+.result__pts[data-pts='2'] {
+  color: #2b1a00;
+  background: var(--b-amber);
+}
 .result__pts[data-pts='1'] {
-  color: #2b2300;
-  background: var(--b-accent-2);
+  color: #04140d;
+  background: var(--b-teal);
 }
 .result__pts[data-pts='0'] {
   color: #fff;
   background: var(--b-red);
 }
 
-.result__real {
-  font-size: 0.72rem;
-  color: var(--b-muted);
-  font-variant-numeric: tabular-nums;
-  min-width: 2.5rem;
-  text-align: right;
+/* ── Mata-mata: "quem passa" — bloco próprio, centralizado de fato (sem grid/padding) ── */
+.advance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+  text-align: center;
 }
 
-.result__real--pending {
-  opacity: 0.4;
+.advance__label {
+  font-size: 0.68rem;
+  color: var(--b-muted);
+}
+
+.advance__opts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.advance__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid var(--b-border);
+  border-radius: 0.25rem;
+  background: var(--b-card-2);
+  color: var(--b-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.advance__opt:hover {
+  border-color: color-mix(in srgb, var(--b-accent) 50%, var(--b-border));
+}
+
+/* Escolhido manualmente (empate decidido pelo usuário). */
+.advance__opt--on {
+  border-color: var(--b-accent);
+  color: #eafff5;
+  background: color-mix(in srgb, var(--b-accent) 16%, var(--b-card-2));
+}
+
+.advance__crest {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+/* Empate de mata-mata sem "quem passa" escolhido: sinaliza pendência na linha. */
+.match--needs-adv {
+  background: color-mix(in srgb, var(--b-accent-2) 7%, transparent);
 }
 
 /* ── Rodapé ─────────────────────────────────────────────────────────────────── */
@@ -506,7 +707,7 @@
   }
 
   .row {
-    grid-template-columns: 4px 1fr auto 1fr 4.5rem;
+    grid-template-columns: 1fr auto 1fr;
     gap: 0.35rem;
   }
 }

@@ -22,22 +22,11 @@
       </div>
 
       <div class="bar__actions">
-        <button class="ghost" (click)="openModal.emit(selectedId())" title="Editar palpites">
-          <svg lucidePencil [size]="16"></svg><span class="ghost__txt">Editar</span>
+        <button class="ghost" (click)="openModal.emit(selectedId())" title="Abrir palpites">
+          <svg lucidePencil [size]="16"></svg><span class="ghost__txt">Palpites</span>
         </button>
-        <button class="ghost" (click)="exportSelected()" title="Exportar JSON">
-          <svg lucideDownload [size]="16"></svg><span class="ghost__txt">Exportar</span>
-        </button>
-        <label class="ghost" title="Importar JSON">
-          <svg lucideUpload [size]="16"></svg><span class="ghost__txt">Importar</span>
-          <input type="file" accept="application/json,.json" hidden (change)="onImportFile($event)" />
-        </label>
       </div>
     </header>
-
-    @if (feedback(); as fb) {
-    <p class="feedback" [class.feedback--err]="fb.kind === 'err'">{{ fb.text }}</p>
-    }
 
     @if (liveRows().length) {
     <section class="live">
@@ -45,15 +34,15 @@
       @for (r of liveRows(); track r.id) {
       <div class="lrow">
         <span class="lrow__team">
-          <img class="lrow__crest" [src]="r.homeCrest" [alt]="r.homeTla" loading="lazy" />
-          {{ r.homeTla }}
+          <img class="lrow__crest" [src]="r.homeCrest" [alt]="r.homeTla | shortNamePt" loading="lazy" />
+          {{ r.homeTla | shortNamePt }}
         </span>
         <span class="lrow__score">
           {{ r.realHome ?? '-' }}<span class="lrow__x">×</span>{{ r.realAway ?? '-' }}
         </span>
         <span class="lrow__team lrow__team--away">
-          {{ r.awayTla }}
-          <img class="lrow__crest" [src]="r.awayCrest" [alt]="r.awayTla" loading="lazy" />
+          {{ r.awayTla | shortNamePt }}
+          <img class="lrow__crest" [src]="r.awayCrest" [alt]="r.awayTla | shortNamePt" loading="lazy" />
         </span>
         @if (r.palpite; as p) {
         <span class="lrow__guess" [attr.data-pts]="r.pts">
@@ -75,13 +64,13 @@
       @for (n of nextRows(); track n.id) {
       <div class="lrow">
         <span class="lrow__team">
-          <img class="lrow__crest" [src]="n.homeCrest" [alt]="n.homeTla" loading="lazy" />
-          {{ n.homeTla }}
+          <img class="lrow__crest" [src]="n.homeCrest" [alt]="n.homeTla | shortNamePt" loading="lazy" />
+          {{ n.homeTla | shortNamePt }}
         </span>
         <span class="lrow__score lrow__when">{{ n.when }}</span>
         <span class="lrow__team lrow__team--away">
-          {{ n.awayTla }}
-          <img class="lrow__crest" [src]="n.awayCrest" [alt]="n.awayTla" loading="lazy" />
+          {{ n.awayTla | shortNamePt }}
+          <img class="lrow__crest" [src]="n.awayCrest" [alt]="n.awayTla | shortNamePt" loading="lazy" />
         </span>
         @if (n.palpite; as p) {
         <span class="lrow__guess">palpite {{ p.home }}×{{ p.away }}</span>
@@ -116,23 +105,32 @@
     </section>
 
     <!-- Faixas de acerto: Cravou / Acertou / Errou (clicáveis → modal de detalhe) -->
-    <section class="tiers">
-      <button type="button" class="tier tier--cravou" [disabled]="t.cravou === 0"
-        (click)="openCategoria('cravou')" title="Ver palpites cravados">
+    <section class="tiers" [class.tiers--four]="t.quaseCravou > 0">
+      <button type="button" class="tier tier--cravou" [disabled]="t.cravou === 0" (click)="openCategoria('cravou')"
+        title="Ver palpites cravados">
         <svg lucideCrosshair [size]="20"></svg>
         <span class="tier__val">{{ t.cravou }}</span>
         <span class="tier__lab">Cravou</span>
         <span class="tier__hint">+3 · placar exato</span>
       </button>
-      <button type="button" class="tier tier--acertou" [disabled]="t.acertou === 0"
-        (click)="openCategoria('acertou')" title="Ver palpites certos">
+      @if (t.quaseCravou > 0) {
+      <button type="button" class="tier tier--quase" (click)="openCategoria('quase')"
+        title="Placar exato, mas errou quem passou nos pênaltis">
+        <svg lucideCrosshair [size]="20"></svg>
+        <span class="tier__val">{{ t.quaseCravou }}</span>
+        <span class="tier__lab">Na trave</span>
+        <span class="tier__hint">+2 · errou quem passou</span>
+      </button>
+      }
+      <button type="button" class="tier tier--acertou" [disabled]="t.acertou === 0" (click)="openCategoria('acertou')"
+        title="Ver palpites certos">
         <svg lucideThumbsUp [size]="20"></svg>
         <span class="tier__val">{{ t.acertou }}</span>
         <span class="tier__lab">Acertou</span>
         <span class="tier__hint">+1 · resultado</span>
       </button>
-      <button type="button" class="tier tier--errou" [disabled]="t.errou === 0"
-        (click)="openCategoria('errou')" title="Ver palpites errados">
+      <button type="button" class="tier tier--errou" [disabled]="t.errou === 0" (click)="openCategoria('errou')"
+        title="Ver palpites errados">
         <svg lucideX [size]="20"></svg>
         <span class="tier__val">{{ t.errou }}</span>
         <span class="tier__lab">Errou</span>
@@ -149,8 +147,7 @@
         @for (c of groupCells(); track c.label) {
         <button type="button" class="heat__cell" [class.heat__cell--empty]="c.value === 0"
           [class.heat__cell--clickable]="c.played" [disabled]="!c.played" [style.--h]="c.heat"
-          (click)="openGrupo(c.label)"
-          [title]="'Grupo ' + c.label + ': ' + c.value + ' pts'">
+          (click)="openGrupo(c.label)" [title]="'Grupo ' + c.label + ': ' + c.value + ' pts'">
           <span class="heat__group">{{ c.label }}</span>
           <span class="heat__val">{{ c.value }}</span>
         </button>
@@ -168,8 +165,7 @@
         @for (f of phaseCells(); track f.label) {
         <button type="button" class="phase-cell" [class.phase-cell--empty]="f.value === 0"
           [class.phase-cell--clickable]="f.jogos > 0" [disabled]="f.jogos === 0" [style.--h]="f.heat"
-          (click)="openFase(f.key, f.label)"
-          [title]="f.label + ': ' + f.value + ' pts · ' + f.jogos + ' jogo(s)'">
+          (click)="openFase(f.key, f.label)" [title]="f.label + ': ' + f.value + ' pts · ' + f.jogos + ' jogo(s)'">
           <span class="phase-cell__lab">{{ f.label }}</span>
           <span class="phase-cell__val">{{ f.value }}</span>
         </button>
@@ -186,9 +182,8 @@
       @if (dayColumns().length) {
       <div class="days">
         @for (d of dayColumns(); track d.label) {
-        <button type="button" class="day day--clickable" [class.day--best]="d.isBest"
-          [class.day--worst]="d.isWorst" (click)="openDia(d.date, d.label)"
-          [title]="d.points + ' pts · ' + d.jogos + ' jogo(s)'">
+        <button type="button" class="day day--clickable" [class.day--best]="d.isBest" [class.day--worst]="d.isWorst"
+          (click)="openDia(d.date, d.label)" [title]="d.points + ' pts · ' + d.jogos + ' jogo(s)'">
           <span class="day__pts">{{ d.points }}</span>
           <div class="day__track">
             <div class="day__bar" [style.height.%]="d.height * 100"></div>
@@ -240,5 +235,5 @@
 </div>
 
 @if (detalhe(); as d) {
-  <app-bolao-detalhe-modal [title]="d.title" [items]="d.items" (close)="closeDetalhe()" />
+<app-bolao-detalhe-modal [title]="d.title" [items]="d.items" (close)="closeDetalhe()" />
 }

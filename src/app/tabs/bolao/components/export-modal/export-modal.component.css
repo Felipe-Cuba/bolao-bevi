@@ -14,17 +14,6 @@
   z-index: 60;
 }
 
-/* Skin do Bolão */
-.bolao {
-  --b-accent: #16c784;
-  --b-accent-2: #f5c518;
-  --b-card: #161b26;
-  --b-card-2: #1d2433;
-  --b-border: #283042;
-  --b-muted: #8b94a7;
-  accent-color: var(--b-accent);
-}
-
 .dialog {
   background: var(--bg, #0f1220);
   border: 1px solid var(--b-border);
