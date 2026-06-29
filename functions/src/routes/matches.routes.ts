@@ -1,9 +1,9 @@
 import { Router } from 'express';
 
 import { asyncHandler } from '../middlewares/async-handler.js';
-import { inject } from '../core/injector.js';
+import { inject } from '#core/injector';
 import { MatchesService } from '../services/matches.service.js';
-import { PhaseStatus } from '../lib/partitions.js';
+import { MatchPartitioner } from '#lib/partitions';
 
 export const matchesRouter = Router();
 
@@ -29,11 +29,13 @@ matchesRouter.get(
       const ids = partParam.split(',').map((s) => s.trim()).filter(Boolean);
       const result = await svc.getParts(ids);
       // Se todas as partes pedidas terminaram, são imutáveis → cache longo.
+      const meta = result.meta;
       const immutable =
-        result.meta &&
+        !!meta &&
         ids.every(
           (id) =>
-            result.meta.parts.find((p) => p.id === id)?.phaseStatus === PhaseStatus.FINISHED,
+            meta.parts.find((p) => p.id === id)?.phaseStatus ===
+            MatchPartitioner.PhaseStatus.FINISHED,
         );
       res.set('Cache-Control', immutable ? 'public, max-age=3600' : 'public, max-age=30');
       res.status(200).json(result);

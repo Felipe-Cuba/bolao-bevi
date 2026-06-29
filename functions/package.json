@@ -2,12 +2,21 @@
   "name": "bolao-bevi-functions",
   "description": "Cloud Functions do Bolão Bevi (proxy da API football-data.org)",
   "type": "module",
-  "main": "index.js",
+  "main": "lib/index.js",
   "engines": {
     "node": "22"
   },
+  "imports": {
+    "#models": "./lib/models/index.js",
+    "#models/*": "./lib/models/*.js",
+    "#lib/*": "./lib/lib/*.js",
+    "#core/*": "./lib/core/*.js",
+    "#config": "./lib/config.js"
+  },
   "scripts": {
-    "serve": "firebase emulators:start --only functions --project bolao-bevi",
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "serve": "npm run build && firebase emulators:start --only functions --project bolao-bevi",
     "deploy": "firebase deploy --only functions --project bolao-bevi"
   },
   "dependencies": {
@@ -15,6 +24,12 @@
     "express": "^4.21.0",
     "firebase-admin": "^13.0.0",
     "firebase-functions": "^6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17"
   },
   "private": true
 }

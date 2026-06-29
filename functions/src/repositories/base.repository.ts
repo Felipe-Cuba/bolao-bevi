@@ -7,12 +7,12 @@ import { db } from '../firebase.js';
  * Admin SDK. Subclasses informam o nome da coleção via `collectionName` e ganham as
  * operações genéricas abaixo. Não deve ser instanciado diretamente.
  *
- * Instâncias são obtidas via `inject(Repo)` (core/injector.js), que gerencia o
+ * Instâncias são obtidas via `inject(Repo)` (core/injector), que gerencia o
  * singleton. A base apenas impede a instanciação direta da classe abstrata.
  */
 export class BaseRepository {
   /** Nome da coleção raiz. Subclasses DEVEM sobrescrever. */
-  collectionName = '';
+  public collectionName = '';
 
   constructor() {
     if (new.target === BaseRepository) {
@@ -21,7 +21,7 @@ export class BaseRepository {
   }
 
   /** Referência da coleção raiz deste repositório. */
-  collection() {
+  public collection() {
     if (!this.collectionName) {
       throw new Error(`${this.constructor.name} não definiu collectionName.`);
     }
@@ -29,34 +29,34 @@ export class BaseRepository {
   }
 
   /** Referência de um documento por id. */
-  docRef(id) {
+  public docRef(id: string) {
     return this.collection().doc(id);
   }
 
   /** Snapshot de um documento. */
-  async getSnap(id) {
+  public async getSnap(id: string) {
     return this.docRef(id).get();
   }
 
   /** Dados de um documento (ou null se não existir). */
-  async findById(id) {
+  public async findById<T = unknown>(id: string): Promise<T | null> {
     const snap = await this.getSnap(id);
-    return snap.exists ? snap.data() : null;
+    return snap.exists ? (snap.data() as T) : null;
   }
 
   /** Indica se o documento existe. */
-  async exists(id) {
+  public async exists(id: string): Promise<boolean> {
     return (await this.getSnap(id)).exists;
   }
 
   /** Grava (sobrescreve por padrão) um documento. */
-  async set(id, data, options = {}) {
-    await this.docRef(id).set(data, options);
+  public async set<T>(id: string, data: T, options: FirebaseFirestore.SetOptions = {}): Promise<T> {
+    await this.docRef(id).set(data as FirebaseFirestore.DocumentData, options);
     return data;
   }
 
   /** Remove um documento. */
-  async delete(id) {
+  public async delete(id: string) {
     await this.docRef(id).delete();
   }
 }

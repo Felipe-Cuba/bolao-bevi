@@ -14,38 +14,42 @@
  *   const service = inject(Service);
  */
 
+/** Token de injeção: uma classe instanciável sem argumentos. */
+type Token<T> = new () => T;
+
 /** Instâncias singleton já criadas, por token. */
-const instances = new Map();
+const instances = new Map<Token<unknown>, unknown>();
 
 /** Factories customizadas por token (opcional; default é `new Token()`). */
-const providers = new Map();
+const providers = new Map<Token<unknown>, () => unknown>();
 
 /** Detecta ciclos de dependência durante a resolução. */
-const resolving = new Set();
+const resolving = new Set<Token<unknown>>();
 
 /** Registra uma factory customizada para um token (sobrescreve o default). */
-export function provide(token, factory) {
-  providers.set(token, factory);
-  instances.delete(token);
+export function provide<T>(token: Token<T>, factory: () => T): void {
+  providers.set(token as Token<unknown>, factory as () => unknown);
+  instances.delete(token as Token<unknown>);
 }
 
 /** Resolve (e memoiza) a instância singleton de um token. */
-export function inject(token) {
-  if (instances.has(token)) return instances.get(token);
+export function inject<T>(token: Token<T>): T {
+  const key = token as Token<unknown>;
+  if (instances.has(key)) return instances.get(key) as T;
 
-  if (resolving.has(token)) {
-    const name = token?.name ?? String(token);
+  if (resolving.has(key)) {
+    const name = (token as { name?: string })?.name ?? String(token);
     throw new Error(`Ciclo de dependência detectado ao injetar ${name}.`);
   }
 
-  resolving.add(token);
+  resolving.add(key);
   try {
-    const factory = providers.get(token) ?? (() => new token());
+    const factory = providers.get(key) ?? (() => new token());
     const instance = factory();
-    instances.set(token, instance);
-    return instance;
+    instances.set(key, instance);
+    return instance as T;
   } finally {
-    resolving.delete(token);
+    resolving.delete(key);
   }
 }
 

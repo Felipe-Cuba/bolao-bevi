@@ -1,8 +1,21 @@
-import { inject } from '../core/injector.js';
+import { inject } from '#core/injector';
 import { MatchesRepository } from '../repositories/matches.repository.js';
-import { API_URL, MIN_INTERVAL_MS } from '../config.js';
-import { partition, assemble, PhaseStatus } from '../lib/partitions.js';
-import { reconcileMatches } from '../lib/reconcile.js';
+import { API_URL } from '#config';
+import { MatchPartitioner } from '#lib/partitions';
+import { MatchReconciler } from '#lib/reconcile';
+import { FootballDataClient } from '#lib/football-data.client';
+import { CacheGate } from '#lib/cache-gate';
+import { HttpError } from '#lib/http-error';
+import type {
+  Match,
+  MatchPart,
+  MatchPartInfo,
+  MatchesMeta,
+  MatchesPayload,
+  MatchesResult,
+  MetaDoc,
+  PartsResult,
+} from '#models';
 
 /**
  * Serviço das partidas da Copa: proxy + gatekeeper da API football-data.org com cache
@@ -14,25 +27,31 @@ import { reconcileMatches } from '../lib/reconcile.js';
  */
 export class MatchesService {
   /** Repositório injetado (singleton resolvido pelo injector). */
-  repo = inject(MatchesRepository);
+  private repo = inject(MatchesRepository);
+  /** Cliente da API football-data.org (injetado). */
+  private api = inject(FootballDataClient);
 
   // ── Leitura ─────────────────────────────────────────────────────────────────
 
   /** Payload completo (retrocompat). Mantém o shape { data, updatedAtMs, source }. */
-  async getAllMatches() {
+  public async getAllMatches(): Promise<MatchesResult> {
     await this.refreshIfStale();
     const { meta, parts } = await this.repo.readAllParts();
     if (meta) {
-      return { data: assemble(meta, parts), updatedAtMs: meta.updatedAtMs ?? null, source: 'firestore' };
+      return {
+        data: MatchPartitioner.assemble(meta, parts),
+        updatedAtMs: meta.updatedAtMs ?? null,
+        source: 'firestore',
+      };
     }
     // Fallback ao doc legado, se as partes ainda não existirem.
     const cached = await this.repo.readCurrent();
     if (cached) return { data: cached.data, updatedAtMs: cached.updatedAtMs ?? null, source: 'firestore' };
-    throw notFound();
+    throw new HttpError(404, 'Partidas indisponíveis (sem cache).');
   }
 
   /** Só as partes pedidas + o `_meta`. */
-  async getParts(ids) {
+  public async getParts(ids: string[]): Promise<PartsResult> {
     await this.refreshIfStale(ids);
     const [meta, parts] = await Promise.all([this.repo.readMeta(), this.repo.readParts(ids)]);
     return {
@@ -44,10 +63,10 @@ export class MatchesService {
   }
 
   /** Só o índice das partes (leve). */
-  async getMeta() {
+  public async getMeta(): Promise<MatchesMeta & { updatedAtMs: number | null; source: 'firestore' }> {
     await this.refreshIfStale();
     const meta = await this.repo.readMeta();
-    if (!meta) throw notFound();
+    if (!meta) throw new HttpError(404, 'Partidas indisponíveis (sem cache).');
     return { ...publicMeta(meta), updatedAtMs: meta.updatedAtMs ?? null, source: 'firestore' };
   }
 
@@ -58,46 +77,31 @@ export class MatchesService {
    * Otimização: se todas as partes pedidas já estão `finished` (imutáveis), não chama a
    * API mesmo fora dos 30s.
    */
-  async refreshIfStale(requestedIds = null) {
+  public async refreshIfStale(requestedIds: string[] | null = null): Promise<void> {
     const meta = await this.repo.readMeta();
-    const now = Date.now();
 
     if (meta && requestedIds && allFinished(meta, requestedIds)) return; // imutável
-    if (meta && typeof meta.updatedAtMs === 'number' && now - meta.updatedAtMs < MIN_INTERVAL_MS) {
-      return; // gate: ainda fresco
-    }
+    if (meta && CacheGate.isFresh(meta.updatedAtMs)) return; // gate: ainda fresco
 
     await this.fetchAndStore();
   }
 
   /** Busca da API, particiona e grava (partes + meta + doc legado). Tolera falha. */
-  async fetchAndStore() {
-    let apiRes;
-    try {
-      apiRes = await fetch(API_URL, {
-        headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_TOKEN ?? '' },
-      });
-    } catch (err) {
-      console.error('[matches] falha ao chamar a API:', err);
-      return; // mantém o cache atual (stale)
-    }
+  public async fetchAndStore(): Promise<void> {
+    const res = await this.api.fetchJson<MatchesPayload>(API_URL, 'matches');
+    if (!res.ok || !res.data) return; // mantém o cache atual (stale)
 
-    if (!apiRes.ok) {
-      console.warn(`[matches] API retornou ${apiRes.status}; mantendo cache.`);
-      return;
-    }
-
-    const data = await apiRes.json();
+    const data = res.data;
     const updatedAtMs = Date.now();
 
     // Guard anti-regressão: a API às vezes rebaixa um jogo já encerrado (FINISHED→TIMED),
     // o que sobrescreveria o cache e estragaria a pontuação. Reconcilia contra o cache atual
     // antes de particionar/gravar, congelando jogos que já estavam em estado terminal.
-    const reconciled = {
+    const reconciled: MatchesPayload = {
       ...data,
-      matches: reconcileMatches(await this.readCachedMatches(), data.matches),
+      matches: MatchReconciler.reconcile(await this.readCachedMatches(), data.matches),
     };
-    const { meta, parts } = partition(reconciled);
+    const { meta, parts } = MatchPartitioner.partition(reconciled);
 
     await this.repo.writePartitions(meta, parts, updatedAtMs);
     await this.repo.writeCurrent(reconciled, updatedAtMs); // legado (remover ao fim da migração)
@@ -107,10 +111,10 @@ export class MatchesService {
    * Lê os jogos atualmente em cache (partes particionadas, com fallback ao doc legado).
    * Retorna [] se ainda não há nada — aí a reconciliação aceita o payload novo inteiro.
    */
-  async readCachedMatches() {
+  public async readCachedMatches(): Promise<Match[]> {
     try {
       const { meta, parts } = await this.repo.readAllParts();
-      if (meta) return assemble(meta, parts).matches ?? [];
+      if (meta) return MatchPartitioner.assemble(meta, parts).matches ?? [];
       const cached = await this.repo.readCurrent();
       return cached?.data?.matches ?? [];
     } catch (err) {
@@ -120,26 +124,19 @@ export class MatchesService {
   }
 }
 
-/** Erro 404 padrão quando não há nada a devolver. */
-function notFound() {
-  const error = new Error('Partidas indisponíveis (sem cache).');
-  error.status = 404;
-  return error;
-}
-
 /** True se todas as partes pedidas existem no meta e estão finished. */
-function allFinished(meta, ids) {
-  const byId = new Map((meta.parts ?? []).map((p) => [p.id, p]));
-  return ids.every((id) => byId.get(id)?.phaseStatus === PhaseStatus.FINISHED);
+function allFinished(meta: MetaDoc, ids: string[]): boolean {
+  const byId = new Map<string, MatchPartInfo>((meta.parts ?? []).map((p) => [p.id, p]));
+  return ids.every((id) => byId.get(id)?.phaseStatus === MatchPartitioner.PhaseStatus.FINISHED);
 }
 
 /** Remove campos internos (lastUpdated do servidor) do meta antes de enviar. */
-function publicMeta(meta) {
+function publicMeta(meta: MetaDoc): MatchesMeta {
   return { competition: meta.competition, season: meta.season, parts: meta.parts };
 }
 
 /** Forma pública de uma parte (sem lastUpdated interno). */
-function publicPart(p) {
+function publicPart(p: MatchPart): MatchPart {
   return {
     id: p.id,
     stage: p.stage,

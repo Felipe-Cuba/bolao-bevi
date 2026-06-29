@@ -1,7 +1,17 @@
 import { FieldValue } from 'firebase-admin/firestore';
 
 import { BaseRepository } from './base.repository.js';
-import { MATCHES_COLLECTION, MATCHES_DOC_ID, META_DOC_ID } from '../config.js';
+import { MATCHES_COLLECTION, MATCHES_DOC_ID, META_DOC_ID } from '#config';
+import type {
+  AllParts,
+  CachedDoc,
+  Match,
+  MatchPart,
+  MatchesMeta,
+  MatchesPayload,
+  MetaDoc,
+  PartDoc,
+} from '#models';
 
 /**
  * Repositório do cache de partidas (coleção wcMatches).
@@ -11,17 +21,17 @@ import { MATCHES_COLLECTION, MATCHES_DOC_ID, META_DOC_ID } from '../config.js';
  * `current` durante a migração (retrocompat com o front antigo).
  */
 export class MatchesRepository extends BaseRepository {
-  collectionName = MATCHES_COLLECTION;
+  public collectionName = MATCHES_COLLECTION;
 
   // ── Legado (doc único) — remover ao fim da migração ────────────────────────
 
   /** Lê o documento de cache legado (ou null se ainda não existe). */
-  async readCurrent() {
+  public async readCurrent(): Promise<CachedDoc<MatchesPayload> | null> {
     return this.findById(MATCHES_DOC_ID);
   }
 
   /** Grava o payload completo no doc legado, com timestamp de atualização. */
-  async writeCurrent(data, updatedAtMs) {
+  public async writeCurrent(data: MatchesPayload, updatedAtMs: number) {
     return this.set(MATCHES_DOC_ID, {
       data,
       lastUpdated: FieldValue.serverTimestamp(),
@@ -32,18 +42,18 @@ export class MatchesRepository extends BaseRepository {
   // ── Partições ──────────────────────────────────────────────────────────────
 
   /** Lê o doc `_meta` (índice das partes) ou null. */
-  async readMeta() {
+  public async readMeta(): Promise<MetaDoc | null> {
     return this.findById(META_DOC_ID);
   }
 
   /** Lê as partes pedidas (na ordem dada). Ignora ids inexistentes. */
-  async readParts(ids) {
+  public async readParts(ids: string[]): Promise<PartDoc[]> {
     const snaps = await Promise.all(ids.map((id) => this.getSnap(id)));
-    return snaps.filter((s) => s.exists).map((s) => ({ id: s.id, ...s.data() }));
+    return snaps.filter((s) => s.exists).map((s) => ({ id: s.id, ...s.data() }) as PartDoc);
   }
 
   /** Lê todas as partes listadas no `_meta`. */
-  async readAllParts() {
+  public async readAllParts(): Promise<AllParts> {
     const meta = await this.readMeta();
     if (!meta?.parts?.length) return { meta: null, parts: [] };
     const parts = await this.readParts(meta.parts.map((p) => p.id));
@@ -55,10 +65,14 @@ export class MatchesRepository extends BaseRepository {
    * cujo conteúdo mudou (compara o array `matches` serializado com o já gravado).
    * Retorna quantas partes foram efetivamente gravadas.
    */
-  async writePartitions(meta, parts, updatedAtMs) {
+  public async writePartitions(
+    meta: MatchesMeta,
+    parts: MatchPart[],
+    updatedAtMs: number,
+  ): Promise<number> {
     // Estado atual das partes, para diff (1 read por parte; barato e evita writes inúteis).
     const existing = await this.readParts(parts.map((p) => p.id));
-    const prevById = new Map(existing.map((p) => [p.id, p]));
+    const prevById = new Map<string, PartDoc>(existing.map((p) => [p.id, p]));
 
     const batch = this.collection().firestore.batch();
 
@@ -92,15 +106,15 @@ export class MatchesRepository extends BaseRepository {
 }
 
 /** Compara duas listas de jogos por conteúdo relevante (status + placar + data). */
-function sameMatches(a, b) {
+function sameMatches(a: Match[], b: Match[]): boolean {
   if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
   return fingerprint(a) === fingerprint(b);
 }
 
-function fingerprint(matches) {
+function fingerprint(matches: Match[]): string {
   return matches
     .map((m) => {
-      const ft = m.score?.fullTime ?? {};
+      const ft = m.score?.fullTime ?? ({} as Match['score']['fullTime']);
       return [m.id, m.status, m.utcDate, ft.home, ft.away].join(':');
     })
     .join('|');

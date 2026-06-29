@@ -1,6 +1,10 @@
-import { inject } from '../core/injector.js';
+import { inject } from '#core/injector';
 import { ScorersRepository } from '../repositories/scorers.repository.js';
-import { SCORERS_API_URL, MIN_INTERVAL_MS } from '../config.js';
+import { SCORERS_API_URL } from '#config';
+import { FootballDataClient } from '#lib/football-data.client';
+import { CacheGate } from '#lib/cache-gate';
+import { HttpError } from '#lib/http-error';
+import type { ScorersResult } from '#models';
 
 /**
  * Serviço da artilharia da Copa: proxy + gatekeeper da API football-data.org com cache
@@ -8,7 +12,9 @@ import { SCORERS_API_URL, MIN_INTERVAL_MS } from '../config.js';
  */
 export class ScorersService {
   /** Repositório injetado (singleton resolvido pelo injector). */
-  repo = inject(ScorersRepository);
+  private repo = inject(ScorersRepository);
+  /** Cliente da API football-data.org (injetado). */
+  private api = inject(FootballDataClient);
 
   /**
    * Decide pelo `updatedAtMs` no cache se chama a API real:
@@ -18,36 +24,25 @@ export class ScorersService {
    *
    * Retorna { data, updatedAtMs, source }. Lança erro só quando não há nada a devolver.
    */
-  async getScorers() {
+  public async getScorers(): Promise<ScorersResult> {
     const cached = await this.repo.readCurrent();
-    const now = Date.now();
 
     // Gate: cache ainda fresco → devolve sem bater na API.
-    if (cached && typeof cached.updatedAtMs === 'number' && now - cached.updatedAtMs < MIN_INTERVAL_MS) {
+    if (cached && CacheGate.isFresh(cached.updatedAtMs)) {
       return { data: cached.data, updatedAtMs: cached.updatedAtMs, source: 'firestore' };
     }
 
     // Vencido → chama a API real.
-    let apiRes;
-    try {
-      apiRes = await fetch(SCORERS_API_URL, {
-        headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_TOKEN ?? '' },
-      });
-    } catch (err) {
-      console.error('[scorers] falha ao chamar a API:', err);
-      if (cached) return { data: cached.data, updatedAtMs: cached.updatedAtMs ?? null, source: 'firestore' };
-      throw err;
+    const res = await this.api.fetchJson(SCORERS_API_URL, 'scorers');
+    if (!res.ok) {
+      // Falhou (rede ou !ok, inclui 429). Devolve o último cache, se houver (stale-while-revalidate).
+      if (cached) {
+        return { data: cached.data, updatedAtMs: cached.updatedAtMs ?? null, source: 'firestore' };
+      }
+      throw new HttpError(res.status || 502, 'Artilharia indisponível.');
     }
 
-    if (!apiRes.ok) {
-      // Falhou (inclui 429). Devolve o último cache, se houver.
-      if (cached) return { data: cached.data, updatedAtMs: cached.updatedAtMs ?? null, source: 'firestore' };
-      const error = new Error(`API retornou ${apiRes.status}`);
-      error.status = apiRes.status;
-      throw error;
-    }
-
-    const data = await apiRes.json();
+    const data = res.data;
     const updatedAtMs = Date.now();
     await this.repo.writeCurrent(data, updatedAtMs);
 

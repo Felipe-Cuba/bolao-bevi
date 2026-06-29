@@ -11,7 +11,7 @@
 
 import { onRequest } from 'firebase-functions/v2/https';
 
-import { REGION } from './src/config.js';
-import { createApp } from './src/app.js';
+import { REGION } from './config.js';
+import { createApp } from './app.js';
 
 export const api = onRequest({ region: REGION, maxInstances: 3 }, createApp());

@@ -24,6 +24,8 @@ yarn-error.log
 !/functions/.env.example
 /functions/credentials.json
 /functions/scripts/*
+# Saída de build do TypeScript das Functions
+/functions/lib
 /src/environments/firebase.config.ts
 
 # Config local do Firebase (project id / região) — use os arquivos .example

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { asyncHandler } from '../middlewares/async-handler.js';
-import { inject } from '../core/injector.js';
+import { inject } from '#core/injector';
 import { GruposService } from '../services/grupos.service.js';
 
 export const gruposRouter = Router();

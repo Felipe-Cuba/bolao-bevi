@@ -1,5 +1,11 @@
+import type {
+  CollectionReference,
+  QueryDocumentSnapshot,
+} from 'firebase-admin/firestore';
+
 import { BaseRepository } from './base.repository.js';
-import { GRUPOS_COLLECTION } from '../config.js';
+import { GRUPOS_COLLECTION } from '#config';
+import type { BolaoEntry, Grupo } from '#models';
 
 const ENTRIES_SUBCOLLECTION = 'entries';
 
@@ -8,32 +14,36 @@ const ENTRIES_SUBCOLLECTION = 'entries';
  * específicas da subcoleção `entries` de cada grupo.
  */
 export class GruposRepository extends BaseRepository {
-  collectionName = GRUPOS_COLLECTION;
+  public collectionName = GRUPOS_COLLECTION;
 
   /** Referência da subcoleção de entries de um grupo. */
-  entriesRef(groupId) {
+  public entriesRef(groupId: string): CollectionReference {
     return this.docRef(groupId).collection(ENTRIES_SUBCOLLECTION);
   }
 
   /** Cria um grupo com nome e timestamp de criação. */
-  async createGroup(groupId, name) {
+  public async createGroup(groupId: string, name: string): Promise<Grupo> {
     return this.set(groupId, { name, createdAtMs: Date.now() });
   }
 
   /** Busca uma entry pelo nome dentro do grupo (para checar unicidade). */
-  async findEntriesByName(groupId, name) {
+  public async findEntriesByName(groupId: string, name: string): Promise<QueryDocumentSnapshot[]> {
     const snap = await this.entriesRef(groupId).where('name', '==', name).get();
     return snap.docs;
   }
 
   /** Grava (sobrescreve) uma entry no grupo. */
-  async saveEntry(groupId, entryId, entry) {
+  public async saveEntry(
+    groupId: string,
+    entryId: string,
+    entry: Omit<BolaoEntry, 'id'>,
+  ): Promise<Omit<BolaoEntry, 'id'>> {
     await this.entriesRef(groupId).doc(entryId).set(entry, { merge: false });
     return entry;
   }
 
   /** Remove uma entry do grupo. */
-  async deleteEntry(groupId, entryId) {
+  public async deleteEntry(groupId: string, entryId: string): Promise<void> {
     await this.entriesRef(groupId).doc(entryId).delete();
   }
 }

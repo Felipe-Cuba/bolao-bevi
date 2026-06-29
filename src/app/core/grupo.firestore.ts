@@ -127,7 +127,8 @@ export class GruposApi {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error((data as { error?: string }).error ?? `Erro ${res.status}.`);
+      const body = data as { message?: string; error?: string };
+      throw new Error(body.message ?? body.error ?? `Erro ${res.status}.`);
     }
     return data as T;
   }
