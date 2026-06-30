@@ -23,7 +23,7 @@ import {
 } from '@shared/utils/bracket-sim-play.util';
 import { PLACEHOLDER_CREST, teamCrest } from '@shared/utils/teams.util';
 import { ShortNamePtPipe } from '@shared/pipes/match-labels.pipes';
-import { Match } from '@shared/models/match.model';
+import { Match, isLive } from '@shared/models/match.model';
 import { DraftLine, Palpite } from '@shared/models/bolao.model';
 import { BolaoStore } from '@core/bolao.store';
 import { buildPalpite, draftAdvances, needsAdvances } from '@shared/utils/bolao-draft.util';
@@ -189,10 +189,14 @@ type Medal = 'gold' | 'silver' | 'bronze' | null;
       <div
         class="node"
         [class.node--live]="node.hasMatch && !node.breakdown"
+        [class.node--livenow]="liveNow(node)"
         [class.node--third]="variant === 'third'"
         [class.node--bet]="playable(node)"
         [class.node--locked]="locked(node)"
       >
+        @if (liveNow(node)) {
+          <span class="node__livedot" title="Ao vivo agora" aria-label="Ao vivo agora"></span>
+        }
         @for (side of sides; track side) {
           <button
             type="button"
@@ -344,6 +348,12 @@ export class BracketView {
   locked(node: TreeNode): boolean {
     const match = this.matchOf(node);
     return !!match && isScorable(match);
+  }
+
+  /** Jogo real do nó está acontecendo AGORA (ao vivo) — para a marcação visual. */
+  liveNow(node: TreeNode): boolean {
+    const match = this.matchOf(node);
+    return !!match && isLive(match);
   }
 
   /** Nó que aceita palpite: 16-avo definido (tem matchId), ainda em aberto. */

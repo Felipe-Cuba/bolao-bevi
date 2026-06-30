@@ -237,6 +237,44 @@
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
+/* ── Marcação "ao vivo agora" ─────────────────────────────────────────────────
+   Borda destacada + ponto pulsante no canto, indicando que o jogo real do nó
+   está acontecendo neste momento (status IN_PLAY/PAUSED/LIVE). */
+.node--livenow {
+  border-color: color-mix(in srgb, var(--b-red) 70%, transparent);
+}
+
+.node__livedot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  z-index: 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--b-red);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--b-red) 70%, transparent);
+  animation: node-live-pulse 1.6s ease-out infinite;
+}
+
+@keyframes node-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--b-red) 65%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--b-red) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--b-red) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node__livedot {
+    animation: none;
+  }
+}
+
 .slot {
   position: relative;
   display: flex;

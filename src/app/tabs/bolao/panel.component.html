@@ -31,6 +31,14 @@
       </div>
     </header>
 
+    <!-- Seletor de etapa: Grupos × Mata-mata (pontuações separadas, não se somam) -->
+    <nav class="etapas" role="tablist" aria-label="Etapa do bolão">
+      @for (e of etapas; track e.id) {
+      <button type="button" class="etapa-tab" role="tab" [class.etapa-tab--active]="etapa() === e.id"
+        [attr.aria-selected]="etapa() === e.id" (click)="etapa.set(e.id)">{{ e.label }}</button>
+      }
+    </nav>
+
     @if (liveRows().length) {
     <section class="live">
       <h3 class="live__title"><span class="dot"></span> Ao vivo</h3>
@@ -91,7 +99,7 @@
       <div class="hero__main">
         <svg lucideTrophy class="hero__icon" [size]="26"></svg>
         <div class="hero__num">{{ t.total }}</div>
-        <div class="hero__cap">pontos</div>
+        <div class="hero__cap">pontos · {{ etapaLabel() }}</div>
         @if (potencial() > 0) {
         <span class="hero__potencial" title="Máximo ainda obtível na fase em andamento">
           +{{ potencial() }} em jogo
@@ -141,7 +149,8 @@
       </button>
     </section>
 
-    <!-- Heatmap: pontos por grupo (células com pontos abrem a modal do grupo) -->
+    <!-- Heatmap: pontos por grupo (só na etapa de grupos; células abrem a modal do grupo) -->
+    @if (etapa() === 'GROUPS') {
     <section class="card">
       <h3 class="card__title">
         <svg lucideGrid3x3 [size]="15"></svg> Pontos por grupo
@@ -157,6 +166,7 @@
         }
       </div>
     </section>
+    }
 
     <!-- Pontos por fase/rodada (progressivo: só fases com jogo montado) -->
     @if (phaseCells().length) {
@@ -213,7 +223,7 @@
     @if (ranking().length > 1) {
     <section class="card">
       <h3 class="card__title">
-        <svg lucideMedal [size]="15"></svg> Ranking dos palpites
+        <svg lucideMedal [size]="15"></svg> Ranking dos palpites · {{ etapaLabel() }}
       </h3>
       <ol class="rank">
         @for (r of ranking(); track r.entry.id; let i = $index) {

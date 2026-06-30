@@ -8,6 +8,13 @@ export const BOLAO_HELP: HelpBlock[] = [
       'A regra de ouro é simples: quanto mais perto da realidade for o seu palpite, mais pontos ' +
       'você ganha! Veja como a sua pontuação é calculada:',
   },
+  {
+    kind: 'paragraph',
+    text:
+      'Importante: a Fase de Grupos e o Mata-mata têm contas SEPARADAS — os pontos de uma não ' +
+      'se somam aos da outra. Use o seletor no topo do painel para alternar entre as etapas e ' +
+      'ver a pontuação e o ranking de cada uma.',
+  },
 
   { kind: 'heading', text: 'Fase de Grupos' },
   {

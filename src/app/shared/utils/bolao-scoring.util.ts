@@ -60,6 +60,42 @@ export function isKnockout(match: Match): boolean {
   return s !== 'GROUP_STAGE' && s !== 'PRELIMINARY_ROUND';
 }
 
+// --- Etapas do bolão (pontuação separada por etapa, sem somar entre elas) ---
+//
+// Uma "etapa" agrupa um conjunto de fases (`stage`) cujos pontos são contados juntos. A
+// fase de grupos e o mata-mata têm contas SEPARADAS: os totais de uma não entram na outra.
+
+export type EtapaId = 'GROUPS' | 'KNOCKOUT';
+
+export interface Etapa {
+  id: EtapaId;
+  label: string; // 'Fase de Grupos' / 'Mata-mata'
+  /** Predicado: o jogo pertence a esta etapa? */
+  includes: (m: Match) => boolean;
+}
+
+/**
+ * Etapas do bolão, em ordem. PONTO ÚNICO de manutenção da separação de pontos:
+ * para resetar a contagem por rodada no futuro (ex.: "Oitavas", "Quartas"… como etapas
+ * próprias), basta fatiar a entrada KNOCKOUT em novas entradas com o predicado da fase
+ * correspondente — nenhum outro arquivo precisa mudar.
+ */
+export const ETAPAS: readonly Etapa[] = [
+  { id: 'GROUPS', label: 'Fase de Grupos', includes: (m) => !isKnockout(m) },
+  { id: 'KNOCKOUT', label: 'Mata-mata', includes: (m) => isKnockout(m) },
+];
+
+/** Rótulo de uma etapa pelo id. */
+export function etapaLabel(id: EtapaId): string {
+  return ETAPAS.find((e) => e.id === id)?.label ?? id;
+}
+
+/** Jogos pertencentes a uma etapa (filtro aplicado ANTES de pontuar/agregar). */
+export function matchesOfEtapa(matches: Match[], etapa: EtapaId): Match[] {
+  const e = ETAPAS.find((x) => x.id === etapa);
+  return e ? matches.filter(e.includes) : [];
+}
+
 /**
  * Lado que se classificou no jogo real. Delega a `winnerSide` (fonte da verdade `score.winner`,
  * com desempate pelo `fullTime`/pênaltis quando a API vem sem `winner`). Null só quando

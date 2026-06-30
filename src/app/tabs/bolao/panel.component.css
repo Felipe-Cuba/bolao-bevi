@@ -119,6 +119,42 @@
   color: var(--b-accent);
 }
 
+/* ── Seletor de etapa (Grupos × Mata-mata) ──────────────────────────────── */
+.etapas {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--b-card);
+  border: 1px solid var(--b-border);
+  border-radius: 999px;
+}
+
+.etapa-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--b-muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.etapa-tab:hover {
+  color: var(--text, #e8ecf4);
+}
+
+.etapa-tab--active {
+  background: var(--b-accent);
+  color: #04140d;
+}
+
+.etapa-tab--active:hover {
+  color: #04140d;
+}
+
 /* ── Hero: total + aproveitamento ───────────────────────────────────────── */
 .hero {
   display: grid;

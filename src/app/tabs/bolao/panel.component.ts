@@ -26,9 +26,13 @@ import { Match, MatchStatus, isLive } from '@shared/models/match.model';
 import { teamCrest } from '@shared/utils/teams.util';
 import { BolaoStore } from '@core/bolao.store';
 import {
+  ETAPAS,
+  EtapaId,
   ScoredGuess,
   entryBreakdown,
+  etapaLabel,
   isScorable,
+  matchesOfEtapa,
   pointsValue,
   rankEntries,
   scoreGuess,
@@ -157,9 +161,17 @@ export class BolaoPanel {
   readonly helpBlocks: HelpBlock[] = BOLAO_HELP;
   readonly selected = this.store.selectedEntry;
 
+  /** Etapa selecionada (Grupos × Mata-mata). Pontuações das etapas NÃO se somam. */
+  readonly etapas = ETAPAS;
+  readonly etapa = signal<EtapaId>('GROUPS');
+  readonly etapaLabel = computed(() => etapaLabel(this.etapa()));
+
+  /** Jogos da etapa ativa — base de todas as contas/agregações do painel. */
+  private readonly matchesEtapa = computed(() => matchesOfEtapa(this.matches(), this.etapa()));
+
   readonly tally = computed(() => {
     const entry = this.selected();
-    return entry ? tallyEntry(entry, this.matches()) : null;
+    return entry ? tallyEntry(entry, this.matchesEtapa()) : null;
   });
 
   /** Aproveitamento: % dos jogos pontuados em que marcou algum ponto (cravou + quase + acertou). */
@@ -231,12 +243,13 @@ export class BolaoPanel {
     return d ? `${this.shortDay(d.date)} · ${d.points} pts` : null;
   }
 
-  readonly ranking = computed(() => rankEntries(this.entries(), this.matches()));
+  /** Ranking da etapa ativa (dois rankings separados: alternar a aba troca a contagem). */
+  readonly ranking = computed(() => rankEntries(this.entries(), this.matchesEtapa()));
 
-  /** Palpites do entry selecionado já resolvidos (placar real × pts), para as modais. */
+  /** Palpites do entry selecionado já resolvidos (placar real × pts) na etapa ativa, p/ as modais. */
   readonly breakdown = computed<ScoredGuess[]>(() => {
     const entry = this.selected();
-    return entry ? entryBreakdown(entry, this.matches()) : [];
+    return entry ? entryBreakdown(entry, this.matchesEtapa()) : [];
   });
 
   /** Modal de detalhe aberta (título + itens filtrados), ou null. */
