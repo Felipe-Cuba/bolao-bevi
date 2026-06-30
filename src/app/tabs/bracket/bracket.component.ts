@@ -22,6 +22,7 @@ import {
   prunePicks,
 } from '@shared/utils/bracket-sim-play.util';
 import { PLACEHOLDER_CREST, teamCrest } from '@shared/utils/teams.util';
+import { ShortNamePtPipe } from '@shared/pipes/match-labels.pipes';
 import { Match } from '@shared/models/match.model';
 import { DraftLine, Palpite } from '@shared/models/bolao.model';
 import { BolaoStore } from '@core/bolao.store';
@@ -52,6 +53,7 @@ type Medal = 'gold' | 'silver' | 'bronze' | null;
     LucideCircleQuestionMark,
     HelpModal,
     BracketPodium,
+    ShortNamePtPipe,
   ],
   template: `
     <section class="bracket bolao">
@@ -220,7 +222,7 @@ type Medal = 'gold' | 'silver' | 'bronze' | null;
               <span class="slot__bet slot__bet--ro">{{ betScore(node, side) }}</span>
             }
             <img class="slot__crest crest" [src]="slotCrest(node[side])" [alt]="node[side].label" loading="lazy" />
-            <span class="slot__name" [title]="node[side].label">{{ node[side].label }}</span>
+            <span class="slot__name" [title]="node[side].label">{{ node[side].team | shortNamePt }}</span>
             @if (slotMainScore(node[side]) !== null) {
               <span class="slot__score">{{ slotMainScore(node[side]) }}</span>
             }
