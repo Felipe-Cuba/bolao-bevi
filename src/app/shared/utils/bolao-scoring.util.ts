@@ -6,16 +6,27 @@
 //   - errou                →  0
 //
 // MATA-MATA (a partir dos 16-avos): não há empate final — alguém sempre se classifica
-// (pênaltis). O palpite tem placar (tempo regular + prorrogação, em `score.fullTime`) e
-// "quem passa" (`palpite.advances`, derivado de `score.winner` no jogo real):
-//   - placar exato + quem passou certo  → +3
-//   - placar exato + errou quem passou  → +2 (só possível em empate decidido nos pênaltis)
-//   - errou placar + quem passou certo  → +1
-//   - errou tudo                        →  0
+// (pênaltis). O palpite tem placar (tempo regular + prorrogação, SEM pênaltis) e "quem passa"
+// (`palpite.advances`, derivado de quem venceu no jogo real, inclusive nos pênaltis):
+//   - placar exato + quem passou certo  → +3 (Cravou)
+//   - placar exato + errou quem passou  → +2 (Na trave — só quando foi aos pênaltis)
+//   - errou placar + quem passou certo  → +1 (Acertou)
+//   - errou tudo                        →  0 (Errou)
+//
+// ATENÇÃO ao placar real: num jogo decidido nos pênaltis a API joga o agregado COM pênaltis
+// em `score.fullTime` (ex.: 5-4). Pontuamos pelo placar EM CAMPO (`scoringScore`: regular +
+// prorrogação, ex.: 1-1), senão um palpite "5×4" bateria com o placar de pênaltis.
 //
 // Só pontua jogos com resultado real disponível: FINISHED ou IN_PLAY (placar definido).
 
-import { Match, MatchStatus, isLive } from '@shared/models/match.model';
+import {
+  Match,
+  MatchStatus,
+  isLive,
+  scoringScore,
+  wentToPenalties,
+  winnerSide,
+} from '@shared/models/match.model';
 import { STAGE_ORDER, stageLabel } from '@shared/utils/match-derivations.util';
 import { Advances, BolaoEntry, Palpite } from '@shared/models/bolao.model';
 
@@ -50,16 +61,13 @@ export function isKnockout(match: Match): boolean {
 }
 
 /**
- * Lado que se classificou no jogo real. Usa `score.winner` (fonte da verdade, inclui
- * pênaltis); como reforço, num placar não-empate o vencedor pelo `fullTime` decide (caso a
- * API venha sem `winner`). Null só quando empate e sem `winner` (ainda indefinido).
+ * Lado que se classificou no jogo real. Delega a `winnerSide` (fonte da verdade `score.winner`,
+ * com desempate pelo `fullTime`/pênaltis quando a API vem sem `winner`). Null só quando
+ * realmente indefinido.
  */
 export function advancesFromMatch(match: Match): Advances | null {
-  if (match.score.winner === 'HOME_TEAM') return 'HOME';
-  if (match.score.winner === 'AWAY_TEAM') return 'AWAY';
-  const { home, away } = match.score.fullTime;
-  if (home != null && away != null && home !== away) return home > away ? 'HOME' : 'AWAY';
-  return null;
+  const w = winnerSide(match.score);
+  return w === 'HOME_TEAM' ? 'HOME' : w === 'AWAY_TEAM' ? 'AWAY' : null;
 }
 
 /** Lado classificado implícito num palpite: vencedor pelo placar, ou o escolhido em empate. */
@@ -90,8 +98,12 @@ export function pointsValue(pts: 0 | 1 | 2 | 3 | null): string {
 /** Pontos de um palpite contra um jogo (0 se o jogo ainda não pontua). */
 export function scoreGuess(palpite: Palpite, match: Match): 0 | 1 | 2 | 3 {
   if (!isScorable(match)) return 0;
-  const realHome = match.score.fullTime.home as number;
-  const realAway = match.score.fullTime.away as number;
+  // Placar para pontuar = tempo normal + prorrogação, SEM pênaltis. Num jogo de pênaltis o
+  // `fullTime` traz o agregado COM pênaltis (ex.: 5-4); pontuar por ele faria um palpite de
+  // "5×4" bater com o placar de pênaltis em vez do 1×1 em campo. `scoringScore` resolve isso.
+  const scoring = scoringScore(match.score);
+  const realHome = scoring.home as number;
+  const realAway = scoring.away as number;
   const placarExato = palpite.home === realHome && palpite.away === realAway;
 
   if (!isKnockout(match)) {
@@ -105,8 +117,15 @@ export function scoreGuess(palpite: Palpite, match: Match): 0 | 1 | 2 | 3 {
   const guessAdvances = palpiteAdvances(palpite);
   const passouCerto = realAdvances != null && guessAdvances === realAdvances;
 
-  if (placarExato) return passouCerto ? 3 : 2;
-  return passouCerto ? 1 : 0;
+  if (placarExato) {
+    if (passouCerto) return 3; // Cravou: placar exato + quem passou certo.
+    // Na trave (+2): acertou o placar mas errou quem passou — só possível quando o jogo foi
+    // aos pênaltis (placar exato empatado). Sem pênaltis, um placar exato já fixa quem passa,
+    // então `passouCerto` seria sempre true e nunca cairia aqui — a guarda deixa a regra
+    // explícita e robusta a dados atípicos.
+    return wentToPenalties(match.score) ? 2 : 0;
+  }
+  return passouCerto ? 1 : 0; // Acertou (+1): errou o placar mas acertou quem passou; senão 0.
 }
 
 /** Pontuação de um único dia com jogos pontuados. */

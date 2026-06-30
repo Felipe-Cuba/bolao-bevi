@@ -6,7 +6,7 @@
 
 import { Pipe, PipeTransform } from '@angular/core';
 
-import { Match, Team } from '@shared/models/match.model';
+import { Match, Team, realScoreText } from '@shared/models/match.model';
 import { isPlaceholderTeam, teamCrest, teamNamePt } from '@shared/utils/teams.util';
 import {
   advancesFromMatch,
@@ -56,7 +56,7 @@ export class IsScorablePipe implements PipeTransform {
 export class RealScorePipe implements PipeTransform {
   transform(match: Match): string | null {
     if (!isScorable(match)) return null;
-    return `${match.score.fullTime.home}×${match.score.fullTime.away}`;
+    return realScoreText(match.score);
   }
 }
 

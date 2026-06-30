@@ -18,7 +18,7 @@
           <img class="drow__crest" [src]="r.homeCrest" [alt]="r.homeTla" loading="lazy" />
           {{ r.homeTla | shortNamePt }}
         </span>
-        <span class="drow__score">{{ r.realHome }}<span class="drow__x">×</span>{{ r.realAway }}</span>
+        <span class="drow__score">{{ r.realText }}</span>
         <span class="drow__team drow__team--away" [attr.data-pts]="r.realSide === 'AWAY' ? r.pts : null">
           {{ r.awayTla | shortNamePt }}
           <img class="drow__crest" [src]="r.awayCrest" [alt]="r.awayTla" loading="lazy" />
