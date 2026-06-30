@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { LucideTrophy, LucideX } from '@lucide/angular';
 
 import { teamCrest } from '@shared/utils/teams.util';
-import { Match, Team } from '@shared/models/match.model';
+import { Match, Team, realScoreText } from '@shared/models/match.model';
 import { ScoredGuess, advancesFromMatch, isKnockout } from '@shared/utils/bolao-scoring.util';
 import { Advances } from '@shared/models/bolao.model';
 import { ShortNamePtPipe } from '@shared/pipes/match-labels.pipes';
@@ -15,8 +15,8 @@ interface DetalheRow {
   awayTla: string;
   homeCrest: string;
   awayCrest: string;
-  realHome: number;
-  realAway: number;
+  /** Placar real formatado (inclui "(x×y P)" em pênaltis). */
+  realText: string;
   guessHome: number;
   guessAway: number;
   pts: 0 | 1 | 2 | 3;
@@ -50,8 +50,7 @@ export class BolaoDetalheModal {
       awayTla: this.teamTla(it.match.awayTeam),
       homeCrest: teamCrest(it.match.homeTeam),
       awayCrest: teamCrest(it.match.awayTeam),
-      realHome: it.match.score.fullTime.home as number,
-      realAway: it.match.score.fullTime.away as number,
+      realText: realScoreText(it.match.score) ?? '',
       guessHome: it.palpite.home,
       guessAway: it.palpite.away,
       pts: it.pts,

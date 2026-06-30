@@ -50,7 +50,7 @@ function roundIndex(round: BracketRound): number {
 
 /** Slot "A definir". */
 function emptySlot(): TreeSlot {
-  return { team: null, label: 'A definir', score: null, winner: false };
+  return { team: null, label: 'A definir', score: null, regScore: null, penScore: null, winner: false };
 }
 
 /** Cópia rasa de um slot, zerando o destaque de vencedor (recalculado pela simulação). */
@@ -151,7 +151,7 @@ export function applyBracketSimulation(tree: BracketTree, picks: SimPicks): Simu
 
 /** Slot de um time que avançou via simulação (sem placar; será clicável adiante). */
 function advancedSlot(team: Team, label: string): TreeSlot {
-  return { team, label, score: null, winner: false };
+  return { team, label, score: null, regScore: null, penScore: null, winner: false };
 }
 
 /** Vencedor simulado de um nó: o lado escolhido, se houver pick e time. */

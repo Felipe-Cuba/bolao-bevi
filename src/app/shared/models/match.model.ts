@@ -271,12 +271,90 @@ export function isLive(match: Match): boolean {
 }
 
 /**
+ * Lado vencedor de um jogo já resolvido, como 'HOME_TEAM'/'AWAY_TEAM', ou null.
+ *
+ * Fonte da verdade: `score.winner`. Porém a API às vezes deixa `winner: null` mesmo em jogo
+ * decidido nos pênaltis (o `winner` reflete só o tempo regular/empate). Nesses casos o
+ * `fullTime` já traz o agregado COM pênaltis (ex.: 4-5), então um placar não-empate desempata
+ * o vencedor. Null só quando realmente indefinido (empate sem critério de desempate).
+ */
+export function winnerSide(score: Score): 'HOME_TEAM' | 'AWAY_TEAM' | null {
+  if (score.winner === 'HOME_TEAM') return 'HOME_TEAM';
+  if (score.winner === 'AWAY_TEAM') return 'AWAY_TEAM';
+  const { home, away } = score.fullTime;
+  if (home != null && away != null && home !== away) {
+    return home > away ? 'HOME_TEAM' : 'AWAY_TEAM';
+  }
+  // Pênaltis com `fullTime` empatado (raro): usa o placar das penalidades como desempate.
+  if (score.duration === 'PENALTY_SHOOTOUT' && score.penalties) {
+    const { home: ph, away: pa } = score.penalties;
+    if (ph != null && pa != null && ph !== pa) return ph > pa ? 'HOME_TEAM' : 'AWAY_TEAM';
+  }
+  return null;
+}
+
+/** Houve disputa de pênaltis? */
+export function wentToPenalties(score: Score): boolean {
+  return score.duration === 'PENALTY_SHOOTOUT';
+}
+
+/**
+ * Placar DECISIVO de pênaltis (home/away), usando `fullTime` como fonte (já inclui a morte
+ * súbita). O campo `score.penalties` da API traz só as 5 primeiras cobranças e pode vir
+ * empatado (enganoso), por isso NÃO é usado quando há `fullTime`. Ex.: fullTime 4-5 → 4/5.
+ * Fallback para `score.penalties` apenas se `fullTime` vier incompleto. Null sem pênaltis.
+ */
+export function penaltyScore(score: Score): ScoreLine | null {
+  if (!wentToPenalties(score)) return null;
+  const { home, away } = score.fullTime;
+  if (home != null && away != null) return { home, away };
+  return score.penalties ?? null;
+}
+
+/**
+ * Placar do jogo para PONTUAR o palpite: tempo normal + prorrogação, SEM pênaltis.
+ *
+ * O palpite de placar do bolão é sobre o resultado em campo (regular + prorrogação); os
+ * pênaltis só decidem "quem passa". Porém, num jogo decidido nos pênaltis, a API joga o
+ * agregado COM pênaltis em `fullTime` (ex.: 5-4) — usar `fullTime` direto faria um palpite
+ * "5×4" bater com o placar de pênaltis, e não com o 1×1 real. Por isso, quando houve
+ * disputa de pênaltis, usamos `regularTime` (+ `extraTime`, se houver); senão, `fullTime`.
+ */
+export function scoringScore(score: Score): ScoreLine {
+  if (!wentToPenalties(score)) return score.fullTime;
+  const reg = score.regularTime;
+  if (reg && reg.home != null && reg.away != null) {
+    const ext = score.extraTime;
+    if (ext && ext.home != null && ext.away != null) {
+      return { home: reg.home + ext.home, away: reg.away + ext.away };
+    }
+    return { home: reg.home, away: reg.away };
+  }
+  // Sem `regularTime` (raro): não dá p/ separar os pênaltis — devolve `fullTime` como estava.
+  return score.fullTime;
+}
+
+/**
+ * Placar REAL formatado: tempo normal + "(P)" quando houve pênaltis.
+ * Ex.: "1×1 (4×5 P)". Sem pênaltis: "2×1". Null se sem placar.
+ * Tempo normal = `regularTime` quando presente; senão `fullTime`.
+ */
+export function realScoreText(score: Score): string | null {
+  const base = scoringScore(score);
+  if (base.home == null || base.away == null) return null;
+  const text = `${base.home}×${base.away}`;
+  const pen = penaltyScore(score);
+  return pen ? `${text} (${pen.home}×${pen.away} P)` : text;
+}
+
+/**
  * Detalhe textual do resultado quando houve prorrogação/pênaltis.
- * Ex.: "Pênaltis (4-3)" ou "Prorrogação". Retorna null para jogo em tempo normal.
+ * Ex.: "Pênaltis (4-5)" ou "Prorrogação". Retorna null para jogo em tempo normal.
  */
 export function scoreBreakdown(score: Score): string | null {
-  if (score.duration === 'PENALTY_SHOOTOUT' && score.penalties) {
-    return `Pênaltis (${score.penalties.home ?? 0}-${score.penalties.away ?? 0})`;
+  const pen = penaltyScore(score);
+  if (pen) {
+    return `Pênaltis (${pen.home ?? 0}-${pen.away ?? 0})`;
   }
   if (score.duration === 'EXTRA_TIME') {
     return 'Prorrogação';

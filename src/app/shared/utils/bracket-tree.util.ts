@@ -17,7 +17,9 @@ import {
   MatchStatus,
   Score,
   Team,
+  penaltyScore,
   scoreBreakdown,
+  winnerSide,
 } from '@shared/models/match.model';
 import { isPlaceholderTeam, teamNamePt } from '@shared/utils/teams.util';
 import { schemaByNum, SchemaMatch } from '@shared/utils/bracket-schema.util';
@@ -35,6 +37,10 @@ export interface TreeSlot {
   team: Team | null;
   label: string;
   score: number | null;
+  /** Gols no tempo normal (regularTime); cai p/ `score` quando não houve prorrogação/pênaltis. */
+  regScore: number | null;
+  /** Placar de pênaltis deste lado (decisivo), ou null se o jogo não foi aos pênaltis. */
+  penScore: number | null;
   winner: boolean;
 }
 
@@ -158,16 +164,25 @@ function numsFor(round: BracketRound, side: BracketSide): number[] {
 
 /** Slot vazio "A definir". */
 function emptySlot(): TreeSlot {
-  return { team: null, label: 'A definir', score: null, winner: false };
+  return { team: null, label: 'A definir', score: null, regScore: null, penScore: null, winner: false };
 }
 
 /** Converte um lado (home/away) de um jogo real em slot, tratando placeholder e vencedor. */
-function apiSlot(team: Team, score: number | null, finished: boolean, isWinner: boolean): TreeSlot {
+function apiSlot(
+  team: Team,
+  score: number | null,
+  regScore: number | null,
+  penScore: number | null,
+  finished: boolean,
+  isWinner: boolean,
+): TreeSlot {
   if (isPlaceholderTeam(team)) return emptySlot();
   return {
     team,
     label: teamNamePt(team),
     score: finished ? score : null,
+    regScore: finished ? regScore : null,
+    penScore: finished ? penScore : null,
     winner: finished && isWinner,
   };
 }
@@ -197,10 +212,16 @@ function apiNode(
   }
   const finished = isFinished(match.status);
   const score: Score = match.score;
+  // `winnerSide` cobre o caso da API não preencher `score.winner` em jogo decidido nos
+  // pênaltis (desempata pelo `fullTime`), para o vencedor avançar mesmo assim.
+  const winner = winnerSide(score);
+  // Gols do tempo normal (cai p/ fullTime quando não houve prorrogação) e o placar de pênaltis.
+  const reg = score.regularTime ?? score.fullTime;
+  const pen = penaltyScore(score);
   return {
     id, num, matchId: match.id, round, side, slotIndex,
-    home: apiSlot(match.homeTeam, score.fullTime.home, finished, score.winner === 'HOME_TEAM'),
-    away: apiSlot(match.awayTeam, score.fullTime.away, finished, score.winner === 'AWAY_TEAM'),
+    home: apiSlot(match.homeTeam, score.fullTime.home, reg.home, pen?.home ?? null, finished, winner === 'HOME_TEAM'),
+    away: apiSlot(match.awayTeam, score.fullTime.away, reg.away, pen?.away ?? null, finished, winner === 'AWAY_TEAM'),
     origin: 'api',
     breakdown: finished ? scoreBreakdown(score) : null,
     hasMatch: true,
@@ -217,6 +238,8 @@ function confrontoNode(
     team,
     label: teamNamePt(team),
     score: null,
+    regScore: null,
+    penScore: null,
     winner: false,
   });
   return {

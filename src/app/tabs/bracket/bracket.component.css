@@ -9,8 +9,8 @@
   box-sizing: border-box;
 
   /* Tokens de densidade da árvore (ajustam tudo num só lugar). */
-  --col-w: 128px;
-  --center-w: 156px;
+  --col-w: 152px;
+  --center-w: 172px;
   --gap: 0.6rem; /* vão entre colunas onde moram os conectores */
   --node-pad: 5px;
   --connector: color-mix(in srgb, var(--accent) 35%, var(--border));
@@ -278,9 +278,10 @@
 .slot__name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Nome completo (sem reticências). Com o card alargado cabe numa linha; nomes muito longos
+     podem quebrar em vez de serem cortados. */
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-size: 0.72rem;
   font-weight: 600;
 }
@@ -293,6 +294,16 @@
   min-width: 0.9rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* Placar de pênaltis ao lado do gol regular, ex.: "(4 P)". */
+.slot__pen {
+  flex: none;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .slot--win {

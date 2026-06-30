@@ -221,12 +221,17 @@ type Medal = 'gold' | 'silver' | 'bronze' | null;
             }
             <img class="slot__crest crest" [src]="slotCrest(node[side])" [alt]="node[side].label" loading="lazy" />
             <span class="slot__name" [title]="node[side].label">{{ node[side].label }}</span>
-            @if (node[side].score !== null) {
-              <span class="slot__score">{{ node[side].score }}</span>
+            @if (slotMainScore(node[side]) !== null) {
+              <span class="slot__score">{{ slotMainScore(node[side]) }}</span>
+            }
+            @if (node[side].penScore !== null) {
+              <span class="slot__pen">({{ node[side].penScore }} P)</span>
             }
           </button>
         }
-        @if (node.breakdown) {
+        <!-- Breakdown ("Prorrogação"/"Pênaltis (x-y)") só quando o placar de pênaltis NÃO já
+             aparece por linha (evita duplicar o "(n P)" de cada slot). -->
+        @if (node.breakdown && node.home.penScore === null) {
           <span class="node__breakdown">{{ node.breakdown }}</span>
         }
         @if (locked(node) && betPoints(node) !== null) {
@@ -506,6 +511,14 @@ export class BracketView {
 
   slotCrest(slot: TreeSlot): string {
     return slot.team ? teamCrest(slot.team) : PLACEHOLDER_CREST;
+  }
+
+  /**
+   * Número principal do slot: gols do tempo normal (`regScore`) quando houver — para que num
+   * jogo de pênaltis apareça "1 (4 P)" e não "4 (4 P)". Cai p/ `score` (placar agregado).
+   */
+  slotMainScore(slot: TreeSlot): number | null {
+    return slot.regScore ?? slot.score;
   }
 
   /**

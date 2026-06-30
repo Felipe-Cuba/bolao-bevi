@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { Match, MatchStatus, Team, isLive, scoreBreakdown } from '@shared/models/match.model';
+import { Match, MatchStatus, Team, isLive, scoreBreakdown, winnerSide } from '@shared/models/match.model';
 import { teamCrest, teamNamePt } from '@shared/utils/teams.util';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -71,8 +71,8 @@ export class MatchCard {
   readonly finished = computed(() => this.match().status === MatchStatus.FINISHED);
 
   /** Vencedor destacado só quando a partida terminou (evita "vencedor" no meio do jogo). */
-  readonly homeWin = computed(() => this.finished() && this.match().score.winner === 'HOME_TEAM');
-  readonly awayWin = computed(() => this.finished() && this.match().score.winner === 'AWAY_TEAM');
+  readonly homeWin = computed(() => this.finished() && winnerSide(this.match().score) === 'HOME_TEAM');
+  readonly awayWin = computed(() => this.finished() && winnerSide(this.match().score) === 'AWAY_TEAM');
   readonly statusLabel = computed(() => STATUS_LABEL[this.match().status] ?? this.match().status);
   readonly breakdown = computed(() => scoreBreakdown(this.match().score));
 
